@@ -30,8 +30,9 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -39,3 +40,25 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# SQLite database files
+prisma/*.db
+prisma/*.db-journal
+prisma/*.db-shm
+prisma/*.db-wal
+
+# Temporary / recovery / scratch files
+call_*.json
+recovered*
+del_old.js
+search_all.js
+fix_*.js
+optimize.js
+recover_all*.js
+rename_and_seed*.js
+update_candles.js
+update_images.js
+apply_fixes.js
+list_users.js
+seed_admin.js
+

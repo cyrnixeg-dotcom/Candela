@@ -5,8 +5,22 @@ const nextConfig = {
     remotePatterns: [],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920],
   },
-  experimental: {
-    optimizeCss: false,
+  async rewrites() {
+    return {
+      beforeFiles: [],
+      afterFiles: [
+        {
+          source: '/api/uploads/:file*',
+          destination: '/images/products/:file*',
+        },
+      ],
+      fallback: [
+        {
+          source: '/images/products/:file*',
+          destination: '/api/uploads/:file*',
+        },
+      ],
+    };
   },
 };
 

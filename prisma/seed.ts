@@ -285,13 +285,14 @@ async function main() {
 
   // Create admin
   const hashedPassword = await bcrypt.hash("candela2024", 12);
-  await prisma.admin.upsert({
+  await prisma.user.upsert({
     where: { email: "admin@candela.store" },
-    update: {},
+    update: { role: "ADMIN" },
     create: {
       email: "admin@candela.store",
       password: hashedPassword,
       name: "Candela Owner",
+      role: "ADMIN",
     },
   });
   console.log("✅ Admin account created: admin@candela.store / candela2024");

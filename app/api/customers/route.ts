@@ -7,11 +7,16 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get("limit") || "20");
 
   try {
-    const customers = await prisma.customer.findMany({
+    const users = await prisma.user.findMany({
+      where: {
+        OR: [
+          { role: "USER" },
+          { orders: { some: {} } },
+        ],
+      },
       include: {
         orders: {
           orderBy: { createdAt: "desc" },
-          take: 1,
           select: { orderNumber: true, createdAt: true, total: true, status: true },
         },
         _count: { select: { orders: true } },
@@ -21,11 +26,29 @@ export async function GET(request: NextRequest) {
       take: limit,
     });
 
-    const total = await prisma.customer.count();
+    const total = await prisma.user.count({
+      where: {
+        OR: [
+          { role: "USER" },
+          { orders: { some: {} } },
+        ],
+      },
+    });
+
+    const customers = users.map((u) => ({
+      id: u.id,
+      name: u.name || u.email || "Customer",
+      email: u.email,
+      phone: u.phone || "—",
+      createdAt: u.createdAt,
+      orders: u.orders,
+      _count: u._count,
+      totalSpend: u.orders.reduce((sum, o) => sum + (o.status !== "CANCELLED" ? o.total : 0), 0),
+    }));
 
     return NextResponse.json({ customers, total });
   } catch (error) {
     console.error("Error fetching customers:", error);
-    return NextResponse.json({ error: "Failed to fetch customers" }, { status: 500 });
+    return NextResponse.json({ customers: [], total: 0 });
   }
 }

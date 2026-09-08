@@ -14,14 +14,29 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const cleanOrderNumber = orderNumber.trim().toUpperCase();
+  const rawPhone = phone.trim();
+  const digitsOnlyPhone = rawPhone.replace(/\D/g, "");
+
   try {
     const order = await prisma.order.findFirst({
       where: {
-        orderNumber,
-        customer: { phone },
+        orderNumber: cleanOrderNumber,
+        user: {
+          OR: [
+            { phone: rawPhone },
+            { phone: digitsOnlyPhone },
+            ...(digitsOnlyPhone.startsWith("0")
+              ? [{ phone: `+20${digitsOnlyPhone.substring(1)}` }]
+              : []),
+            ...(digitsOnlyPhone.startsWith("20")
+              ? [{ phone: `0${digitsOnlyPhone.substring(2)}` }]
+              : []),
+          ],
+        },
       },
       include: {
-        customer: { select: { name: true, phone: true } },
+        user: { select: { name: true, phone: true } },
         items: {
           include: {
             product: { select: { name: true, image: true, subcategory: true } },
@@ -37,7 +52,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(order);
+    return NextResponse.json({
+      ...order,
+      customer: {
+        name: order.user?.name || "Customer",
+        phone: order.user?.phone || phone,
+      },
+    });
   } catch (error) {
     console.error("Error tracking order:", error);
     return NextResponse.json({ error: "Failed to track order" }, { status: 500 });

@@ -10,7 +10,7 @@ export async function GET(
     const order = await prisma.order.findUnique({
       where: { id },
       include: {
-        customer: true,
+        user: true,
         items: {
           include: { product: true },
         },
@@ -21,7 +21,13 @@ export async function GET(
       return NextResponse.json({ error: "Order not found" }, { status: 404 });
     }
 
-    return NextResponse.json(order);
+    return NextResponse.json({
+      ...order,
+      customer: {
+        name: order.user?.name || "Customer",
+        phone: order.user?.phone || "—",
+      },
+    });
   } catch (error) {
     console.error("Error fetching order:", error);
     return NextResponse.json({ error: "Failed to fetch order" }, { status: 500 });
@@ -40,14 +46,20 @@ export async function PUT(
       where: { id },
       data: { status: body.status },
       include: {
-        customer: true,
+        user: true,
         items: {
           include: { product: true },
         },
       },
     });
 
-    return NextResponse.json(order);
+    return NextResponse.json({
+      ...order,
+      customer: {
+        name: order.user?.name || "Customer",
+        phone: order.user?.phone || "—",
+      },
+    });
   } catch (error) {
     console.error("Error updating order:", error);
     return NextResponse.json({ error: "Failed to update order" }, { status: 500 });

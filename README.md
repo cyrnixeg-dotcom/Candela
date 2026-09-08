@@ -1,36 +1,110 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌸 CANDELA — Premium Feminine Fragrance Store
 
-## Getting Started
+A luxury e-commerce ordering website for CANDELA, built with Next.js 14, Framer Motion, and Prisma.
 
-First, run the development server:
+## 🚀 Quick Start
+
+Open a terminal in this folder (`candela-store`) and run:
 
 ```bash
+# 1. Set up the database (creates dev.db with all products & admin)
+npm run db:push
+npm run db:seed
+
+# 2. Start the development server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open **http://localhost:3000** in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🔐 Admin Dashboard
 
-## Learn More
+- **URL**: http://localhost:3000/admin
+- **Email**: `admin@candela.store`
+- **Password**: `candela2024`
 
-To learn more about Next.js, take a look at the following resources:
+> ⚠️ Change your admin password in the Settings page after first login.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 📁 Project Structure
 
-## Deploy on Vercel
+```
+candela-store/
+├── app/                    # Next.js App Router pages
+│   ├── page.tsx            # Homepage (immersive)
+│   ├── shop/               # Product catalog
+│   ├── product/[id]/       # Product detail
+│   ├── order/              # Order form
+│   ├── track/              # Order tracker
+│   ├── about/              # About page
+│   ├── contact/            # Contact page
+│   └── admin/              # Admin dashboard (protected)
+│       ├── page.tsx        # Overview
+│       ├── orders/         # Order management
+│       ├── products/       # Product CRUD
+│       ├── customers/      # Customer list
+│       ├── messages/       # Customer chat
+│       ├── analytics/      # Store analytics
+│       └── settings/       # Store configuration
+├── components/
+│   ├── store/              # Customer-facing components
+│   └── admin/              # Admin dashboard components
+├── lib/                    # Utilities (db, auth, utils)
+├── store/                  # Zustand state management
+├── prisma/                 # Database schema & seed
+└── public/
+    └── images/
+        ├── logo.jpg        # Candela brand logo
+        └── products/       # All 28 product images
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🛒 How the Store Works
+
+1. **Customer** browses products → adds to bag → fills order form
+2. **Order** is saved to database → customer receives order number
+3. **Owner** sees order in admin dashboard → updates status → customer can track it
+4. No online payment — Candela contacts the customer directly
+
+---
+
+## 👑 Admin Features
+
+| Feature | Description |
+|---|---|
+| **Orders** | View all orders, filter by status, update order status |
+| **Products** | Add/edit/delete products, toggle stock & featured |
+| **Customers** | View all customers and their order history |
+| **Messages** | Chat with customers in real-time |
+| **Analytics** | Real order/revenue stats, top products |
+| **Settings** | Configure phone, social media, delivery note |
+
+---
+
+## 🌸 Tech Stack
+
+- **Next.js 14** — Full-stack framework
+- **TypeScript** — Type safety
+- **Tailwind CSS** — Styling with custom Candela design tokens
+- **Framer Motion** — Premium animations
+- **Prisma + SQLite** — Database
+- **NextAuth.js** — Admin authentication
+- **Zustand** — State management
+
+---
+
+## 🔄 Deployment
+
+For public deployment, we recommend **Vercel**:
+
+1. Push this folder to a GitHub repository
+2. Go to [vercel.com](https://vercel.com) and import the repo
+3. Set environment variables:
+   - `DATABASE_URL` (use PostgreSQL for production)
+   - `NEXTAUTH_SECRET` (any random string)
+   - `NEXTAUTH_URL` (your domain)
+4. Deploy!
