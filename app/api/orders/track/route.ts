@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, ensureDbReady } from "@/lib/db";
 
 // Track order by order number + phone
 export async function GET(request: NextRequest) {
@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
   const digitsOnlyPhone = rawPhone.replace(/\D/g, "");
 
   try {
+    await ensureDbReady();
     const order = await prisma.order.findFirst({
       where: {
         orderNumber: cleanOrderNumber,
