@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, ensureDbReady } from "@/lib/db";
 import { STATIC_PRODUCTS } from "@/lib/data";
 import { slugify } from "@/lib/utils";
 
@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get("search");
 
   try {
+    await ensureDbReady();
     const products = await prisma.product.findMany({
       where: {
         ...(category && { category }),
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    await ensureDbReady();
     const body = await request.json();
 
     let baseSlug = slugify(body.slug || body.name || "product");

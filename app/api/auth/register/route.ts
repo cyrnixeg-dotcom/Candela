@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, ensureDbReady } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
 export async function POST(req: Request) {
   try {
+    await ensureDbReady();
     const { name, email, password } = await req.json();
 
     if (!email || !password) {

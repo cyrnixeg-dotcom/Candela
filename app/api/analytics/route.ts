@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, ensureDbReady } from "@/lib/db";
 import { getDeviceType } from "@/lib/utils";
 
 export async function GET() {
   try {
+    await ensureDbReady();
     const [
       totalOrders,
       pendingOrders,

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, ensureDbReady } from "@/lib/db";
 import { generateOrderNumber } from "@/lib/utils";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { STATIC_PRODUCTS } from "@/lib/data";
 
 export async function GET(request: NextRequest) {
+  await ensureDbReady();
   const session = await getServerSession(authOptions);
   
   if (!session || (session.user as any).role !== "ADMIN") {
@@ -52,6 +53,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    await ensureDbReady();
     const session = await getServerSession(authOptions);
     const body = await request.json();
     const { customerName, customerPhone, address, city, notes, items } = body;

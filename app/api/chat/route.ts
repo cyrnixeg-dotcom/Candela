@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, ensureDbReady } from "@/lib/db";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const customerId = searchParams.get("customerId");
 
   try {
+    await ensureDbReady();
     const messages = await prisma.message.findMany({
       where: customerId ? { userId: customerId } : {},
       include: {
@@ -44,6 +45,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    await ensureDbReady();
     const body = await request.json();
     const { customerId, customerName, customerPhone, content, fromOwner } = body;
 

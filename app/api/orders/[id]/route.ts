@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, ensureDbReady } from "@/lib/db";
 
 export async function GET(
   request: NextRequest,
@@ -7,6 +7,7 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
+    await ensureDbReady();
     const order = await prisma.order.findFirst({
       where: {
         OR: [{ id }, { orderNumber: id }],
@@ -42,6 +43,7 @@ export async function PUT(
 ) {
   const { id } = await params;
   try {
+    await ensureDbReady();
     const body = await request.json();
 
     const existing = await prisma.order.findFirst({

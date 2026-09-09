@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { prisma } from "@/lib/db";
+import { prisma, ensureDbReady } from "@/lib/db";
 
 const DEFAULT_SETTINGS: Record<string, string> = {
   phone: "+20 100 000 0000",
@@ -14,6 +14,7 @@ const DEFAULT_SETTINGS: Record<string, string> = {
 
 export async function GET() {
   try {
+    await ensureDbReady();
     const settings = await prisma.siteSetting.findMany();
     const settingsMap = settings.reduce((acc, s) => {
       acc[s.key] = s.value;
@@ -28,6 +29,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    await ensureDbReady();
     const body = await request.json();
     for (const [key, value] of Object.entries(body)) {
       await prisma.siteSetting.upsert({
