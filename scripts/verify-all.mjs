@@ -144,11 +144,22 @@ async function runTests() {
     });
     assert(!!ownerReply.id, "Owner reply message successfully saved");
 
+    const endMsg = await prisma.message.create({
+      data: {
+        userId: testUser.id,
+        content: "[CHAT_ENDED]",
+        fromOwner: false,
+        read: true,
+      },
+    });
+    assert(!!endMsg.id, "End chat marker successfully saved");
+
     const chatThread = await prisma.message.findMany({
       where: { userId: testUser.id },
       orderBy: { createdAt: "asc" },
     });
-    assert(chatThread.length === 2, "Chat thread correctly contains both customer and owner messages");
+    assert(chatThread.length === 3, "Chat thread correctly contains messages and end marker");
+    assert(chatThread[chatThread.length - 1].content === "[CHAT_ENDED]", "Last message correctly flagged as [CHAT_ENDED]");
 
     // 8. Site Settings Upsert & Retrieval Test
     console.log("\n⚙️ 8. Verifying Site Settings Management...");
