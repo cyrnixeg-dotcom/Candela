@@ -64,38 +64,41 @@ export async function POST(request: NextRequest) {
 
     let dbUser = null;
 
-    // 1. If logged in, look up the existing account
-    if (session?.user?.email) {
+    // 1. If logged in as a regular customer (not admin), link to their account and sync name/phone
+    if (session?.user?.email && (session.user as any)?.role !== "ADMIN") {
       dbUser = await prisma.user.findUnique({
         where: { email: session.user.email },
       });
-      if (dbUser && customerPhone && !dbUser.phone) {
+      if (dbUser) {
         await prisma.user.update({
           where: { id: dbUser.id },
-          data: { phone: customerPhone, name: customerName || dbUser.name },
+          data: {
+            ...(customerPhone && { phone: customerPhone }),
+            ...(customerName?.trim() && { name: customerName.trim() }),
+          },
         });
       }
     }
 
-    // 2. If guest (not logged in), find or create a user by phone/name
+    // 2. If guest or admin testing: find or create a user with role USER (never admin)
     if (!dbUser) {
       if (customerPhone) {
         dbUser = await prisma.user.findFirst({
-          where: { phone: customerPhone },
+          where: { phone: customerPhone, role: "USER" },
         });
       }
       if (!dbUser) {
         dbUser = await prisma.user.create({
           data: {
-            name: customerName || "Guest Customer",
+            name: customerName?.trim() || "Customer",
             phone: customerPhone || null,
             role: "USER",
           },
         });
-      } else if (customerName && (!dbUser.name || dbUser.name === "Guest Customer")) {
-        await prisma.user.update({
+      } else if (customerName?.trim() && dbUser.name !== customerName.trim()) {
+        dbUser = await prisma.user.update({
           where: { id: dbUser.id },
-          data: { name: customerName },
+          data: { name: customerName.trim() },
         });
       }
     }

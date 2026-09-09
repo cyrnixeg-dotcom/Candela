@@ -39,7 +39,7 @@ export default function OrderPage() {
   }, [fetchSettings]);
 
   useEffect(() => {
-    if (session?.user) {
+    if (session?.user && (session.user as any).role !== "ADMIN") {
       setFormData((prev) => ({
         ...prev,
         customerName: prev.customerName || session.user?.name || "",

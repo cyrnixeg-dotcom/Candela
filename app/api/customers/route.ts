@@ -10,10 +10,7 @@ export async function GET(request: NextRequest) {
     await ensureDbReady();
     const users = await prisma.user.findMany({
       where: {
-        OR: [
-          { role: "USER" },
-          { orders: { some: {} } },
-        ],
+        role: "USER",
       },
       include: {
         orders: {
@@ -29,10 +26,7 @@ export async function GET(request: NextRequest) {
 
     const total = await prisma.user.count({
       where: {
-        OR: [
-          { role: "USER" },
-          { orders: { some: {} } },
-        ],
+        role: "USER",
       },
     });
 

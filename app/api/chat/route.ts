@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
     if (customerId) {
       user = await prisma.user.findUnique({ where: { id: customerId } });
     } else if (customerPhone) {
-      user = await prisma.user.findFirst({ where: { phone: customerPhone } });
+      user = await prisma.user.findFirst({ where: { phone: customerPhone, role: "USER" } });
       if (!user) {
         user = await prisma.user.create({
           data: {

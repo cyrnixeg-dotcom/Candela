@@ -21,9 +21,7 @@ export async function GET() {
       prisma.order.count({ where: { status: "CONFIRMED" } }),
       prisma.order.count({ where: { status: "DELIVERED" } }),
       prisma.user.count({
-        where: {
-          OR: [{ role: "USER" }, { orders: { some: {} } }],
-        },
+        where: { role: "USER" },
       }),
       prisma.product.count(),
       prisma.analyticsEvent.groupBy({ by: ["sessionId"] }).then((r) => r.length).catch(() => 0),
