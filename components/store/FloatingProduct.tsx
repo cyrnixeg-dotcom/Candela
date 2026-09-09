@@ -77,38 +77,55 @@ export default function FloatingProduct({ product, index }: FloatingProductProps
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 30 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-30px" }}
-      transition={{ duration: 0.5, delay: (index % 4) * 0.08 }}
+      initial={{ opacity: 0, y: 40, scale: 0.9 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{ duration: 0.7, delay: index * 0.08 }}
       className="group relative"
+      style={{ perspective: 1200 }}
     >
       <motion.div
         ref={cardRef}
         onMouseMove={handleMouseMove}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={handleMouseLeave}
-        className="product-card relative bg-white/90 backdrop-blur-sm border border-candela-pink/15 overflow-hidden flex flex-col rounded-2xl sm:rounded-3xl shadow-sm hover:shadow-xl transition-shadow duration-300"
+        className="product-card relative bg-white/80 backdrop-blur-sm border border-candela-pink/10 overflow-hidden flex flex-col"
         style={{
-          boxShadow: "0 4px 20px rgba(244,167,185,0.12)",
+          borderRadius: "24px",
+          boxShadow: "0 4px 24px rgba(244,167,185,0.12)",
+          rotateX: isHovered ? rotateX : 0,
+          rotateY: isHovered ? rotateY : 0,
+          transformStyle: "preserve-3d"
+        }}
+        animate={!isHovered ? {
+          y: [0, -10, 0],
+          rotateZ: [0, 0.5, 0, -0.5, 0],
+        } : {
+          y: -16,
+          scale: 1.03,
+          rotateZ: 0,
+        }}
+        transition={!isHovered ? {
+          y: { duration: floatDuration, repeat: Infinity, ease: "easeInOut", delay: floatDelay },
+          rotateZ: { duration: floatDuration + 1, repeat: Infinity, ease: "easeInOut", delay: floatDelay },
+        } : {
+          type: "spring", stiffness: 300, damping: 20
         }}
         whileHover={{
-          y: -6,
-          boxShadow: "0 16px 36px rgba(244,167,185,0.25)",
+          boxShadow: "0 24px 60px rgba(244,167,185,0.35), 0 8px 20px rgba(201,169,110,0.15)",
         }}
-        whileTap={{ scale: 0.98 }}
       >
         {/* Product image link */}
         <Link
           href={`/product/${product.id}`}
-          className="block relative aspect-square overflow-hidden bg-gradient-to-b from-candela-cream/60 to-white/40 cursor-pointer"
+          className="block relative aspect-square overflow-hidden bg-candela-cream/30 cursor-pointer"
+          style={{ transform: "translateZ(30px)" }}
         >
           <Image
             src={(product.image || "/images/logo.jpg").replace(/\.jpg$/, ".png")}
             alt={product.name}
             fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className="object-contain p-2 sm:p-4 transition-transform duration-500 group-hover:scale-105"
+            className="object-cover transition-transform duration-700 group-hover:scale-110"
             onError={(e) => {
               (e.target as HTMLImageElement).src = "/images/logo.jpg";
             }}
