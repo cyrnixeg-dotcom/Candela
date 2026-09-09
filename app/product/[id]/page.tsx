@@ -86,6 +86,15 @@ export default function ProductPage() {
     );
   }
 
+  const isDataUrl = Boolean(product.image?.startsWith("data:"));
+  const isExternalUrl = Boolean(product.image?.startsWith("http://") || product.image?.startsWith("https://"));
+  const isSpecial = isDataUrl || isExternalUrl;
+  const imageSrc = !product.image
+    ? "/candela-logo.png"
+    : isSpecial
+    ? product.image
+    : product.image.replace(/\.jpg$/, ".png");
+
   return (
     <main className="min-h-screen bg-candela-cream">
       <Navigation />
@@ -135,14 +144,15 @@ export default function ProductPage() {
                 style={{ width: "100%", maxWidth: "500px", aspectRatio: "4/3", WebkitMaskImage: "-webkit-radial-gradient(white, black)" }}
               >
                 <Image
-                  src={(product.image || "/images/logo.jpg").replace(/\.jpg$/, ".png")}
+                  src={imageSrc}
                   alt={product.name}
                   fill
+                  unoptimized={isSpecial}
                   sizes="(max-width: 768px) 95vw, 500px"
                   quality={85}
                   className="object-cover transition-transform duration-1000 hover:scale-105"
                   onError={(e) => {
-                    (e.target as HTMLImageElement).src = "/images/logo.jpg";
+                    (e.target as HTMLImageElement).src = "/candela-logo.png";
                   }}
                   priority
                 />

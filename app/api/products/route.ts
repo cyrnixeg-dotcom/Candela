@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma, ensureDbReady } from "@/lib/db";
 import { STATIC_PRODUCTS } from "@/lib/data";
 import { slugify } from "@/lib/utils";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -14,7 +18,7 @@ export async function GET(request: NextRequest) {
     await ensureDbReady();
     const products = await prisma.product.findMany({
       where: {
-        ...(category && { category }),
+        ...(category && category !== "all" && { category }),
         ...(subcategory && { subcategory }),
         ...(featured === "true" && { isFeatured: true }),
         ...(search && {
@@ -28,14 +32,17 @@ export async function GET(request: NextRequest) {
       orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
     });
 
-    if (products && products.length > 0) {
-      return NextResponse.json(products);
-    }
+    // DB query succeeded — always return the actual database state
+    return NextResponse.json(products, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+      },
+    });
   } catch (error) {
     console.warn("Database fetch products failed, falling back to static catalog:", error);
   }
 
-  // Resilient fallback: return static catalog
+  // Resilient fallback only if database connection failed
   let results = [...STATIC_PRODUCTS];
   if (category && category !== "all") {
     results = results.filter((p) => p.category === category);
@@ -56,13 +63,21 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  return NextResponse.json(results);
+  return NextResponse.json(results, {
+    headers: {
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+    },
+  });
 }
 
 export async function POST(request: NextRequest) {
   try {
     await ensureDbReady();
     const body = await request.json();
+
+    if (!body.name || typeof body.name !== "string" || !body.name.trim()) {
+      return NextResponse.json({ error: "Product name is required" }, { status: 400 });
+    }
 
     let baseSlug = slugify(body.slug || body.name || "product");
     if (!baseSlug) baseSlug = "product-" + Date.now();
@@ -76,21 +91,35 @@ export async function POST(request: NextRequest) {
 
     const product = await prisma.product.create({
       data: {
-        name: body.name || "Untitled Product",
+        name: body.name.trim(),
         slug: uniqueSlug,
-        description: body.description || "",
-        price: parseFloat(body.price) || 0,
+        description: body.description?.trim() || "",
+        price: typeof body.price === "number" ? body.price : parseFloat(body.price) || 0,
         category: body.category || "body-beauty",
         subcategory: body.subcategory || "General",
-        image: body.image || "/candela-logo.png",
-        inStock: body.inStock ?? true,
-        isFeatured: body.isFeatured ?? false,
+        image: body.image?.trim() || "/candela-logo.png",
+        inStock: body.inStock !== undefined ? Boolean(body.inStock) : true,
+        isFeatured: body.isFeatured !== undefined ? Boolean(body.isFeatured) : false,
       },
     });
 
-    return NextResponse.json(product, { status: 201 });
-  } catch (error) {
+    try {
+      revalidatePath("/");
+      revalidatePath("/shop");
+      revalidatePath("/api/products");
+    } catch {}
+
+    return NextResponse.json(product, {
+      status: 201,
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+      },
+    });
+  } catch (error: any) {
     console.error("Error creating product:", error);
-    return NextResponse.json({ error: "Failed to create product" }, { status: 500 });
+    return NextResponse.json(
+      { error: error?.message || "Failed to create product" },
+      { status: 500 }
+    );
   }
 }

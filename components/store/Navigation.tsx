@@ -360,12 +360,13 @@ function SearchOverlay() {
                   <Link key={product.id} href={`/product/${product.id}`} onClick={closeSearch}>
                     <div className="flex items-center gap-4 p-3 bg-white/5 hover:bg-white/10 rounded-xl transition-colors cursor-pointer">
                       <Image
-                        src={product.image}
+                        src={product.image || "/candela-logo.png"}
                         alt={product.name}
                         width={44}
                         height={44}
+                        unoptimized
                         className="rounded-lg object-cover bg-white/10"
-                        onError={(e) => { (e.target as HTMLImageElement).src = "/images/logo.jpg"; }}
+                        onError={(e) => { (e.target as HTMLImageElement).src = "/candela-logo.png"; }}
                       />
                       <div>
                         <p className="font-body text-white text-sm">{product.name}</p>

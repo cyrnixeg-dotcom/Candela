@@ -270,7 +270,7 @@ export default function AdminOrdersPage() {
                     {selectedOrder.items.map((item) => (
                       <div key={item.id} className="flex items-center gap-3">
                         <div className="w-10 h-12 relative flex-shrink-0" style={{ background: "rgba(255,255,255,0.05)", borderRadius: "8px", overflow: "hidden" }}>
-                          <Image src={item.product.image} alt={item.product.name} fill className="object-cover" onError={(e) => { (e.target as HTMLImageElement).src = "/images/logo.jpg"; }} />
+                          <Image src={item.product.image || "/candela-logo.png"} alt={item.product.name} fill unoptimized className="object-cover" onError={(e) => { (e.target as HTMLImageElement).src = "/candela-logo.png"; }} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p style={{ fontFamily: "'Jost', sans-serif", fontSize: "0.78rem", color: "rgba(255,255,255,0.7)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

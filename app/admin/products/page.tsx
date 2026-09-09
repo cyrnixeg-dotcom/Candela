@@ -36,7 +36,7 @@ type FormData = Omit<Product, "id" | "views" | "slug"> & { slug?: string };
 const EMPTY_FORM: FormData = {
   name: "",
   price: 0,
-  image: "",
+  image: "/candela-logo.png",
   category: "body-beauty",
   subcategory: "Body Mist",
   description: "",
@@ -54,12 +54,15 @@ export default function AdminProductsPage() {
   const [imageUploading, setImageUploading] = useState(false);
 
   const load = () => {
-    fetch("/api/products")
+    fetch("/api/products", { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
-        setProducts(data);
+        if (Array.isArray(data)) {
+          setProducts(data);
+        }
         setLoading(false);
-      });
+      })
+      .catch(() => setLoading(false));
   };
 
   useEffect(load, []);
@@ -107,48 +110,83 @@ export default function AdminProductsPage() {
   };
 
   const handleSave = async () => {
+    if (!formData.name || !formData.name.trim()) {
+      alert("Please enter a product name.");
+      return;
+    }
     setSaving(true);
     try {
       const payload = {
         ...formData,
+        name: formData.name.trim(),
+        price: typeof formData.price === "number" ? formData.price : parseFloat(String(formData.price)) || 0,
+        image: formData.image?.trim() || "/candela-logo.png",
         slug: slugify(formData.name),
       };
 
-      if (editingProduct) {
-        await fetch(`/api/products/${editingProduct.id}`, {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      } else {
-        await fetch("/api/products", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
+      const res = editingProduct
+        ? await fetch(`/api/products/${editingProduct.id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          })
+        : await fetch("/api/products", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        alert(`Failed to save product: ${errorData.error || res.statusText}`);
+        return;
       }
+
       setShowForm(false);
       load();
+    } catch (err: any) {
+      console.error("Save error:", err);
+      alert(`Network error saving product: ${err?.message || "Unknown error"}`);
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this product?")) return;
-    await fetch(`/api/products/${id}`, { method: "DELETE" });
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+    if (!confirm("Are you sure you want to delete this product?")) return;
+    try {
+      const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(`Failed to delete product: ${err.error || res.statusText}`);
+        return;
+      }
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+      load();
+    } catch (err: any) {
+      console.error("Delete error:", err);
+      alert(`Network error deleting product: ${err?.message || "Unknown error"}`);
+    }
   };
 
   const toggleField = async (id: string, field: "inStock" | "isFeatured", value: boolean) => {
-    await fetch(`/api/products/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ [field]: value }),
-    });
-    setProducts((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, [field]: value } : p))
-    );
+    try {
+      const res = await fetch(`/api/products/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        alert(`Failed to update product: ${err.error || res.statusText}`);
+        return;
+      }
+      setProducts((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, [field]: value } : p))
+      );
+    } catch (err) {
+      console.error("Toggle error:", err);
+    }
   };
 
   const update = (field: keyof FormData) => (
@@ -200,11 +238,12 @@ export default function AdminProductsPage() {
               >
                 <div className="relative aspect-[3/4]" style={{ background: "rgba(255,255,255,0.03)" }}>
                   <Image
-                    src={product.image}
+                    src={product.image || "/candela-logo.png"}
                     alt={product.name}
                     fill
+                    unoptimized
                     className="object-cover"
-                    onError={(e) => { (e.target as HTMLImageElement).src = "/images/logo.jpg"; }}
+                    onError={(e) => { (e.target as HTMLImageElement).src = "/candela-logo.png"; }}
                   />
                   <div className="absolute top-2 right-2 flex flex-col gap-1">
                     {product.isFeatured && (
@@ -326,7 +365,14 @@ export default function AdminProductsPage() {
                   <div className="flex gap-3 items-center">
                     {formData.image && (
                       <div className="w-16 h-20 relative rounded-lg overflow-hidden" style={{ background: "rgba(255,255,255,0.05)" }}>
-                        <Image src={formData.image} alt="preview" fill className="object-cover" onError={(e) => { (e.target as HTMLImageElement).src = "/images/logo.jpg"; }} />
+                        <Image
+                          src={formData.image}
+                          alt="preview"
+                          fill
+                          unoptimized
+                          className="object-cover"
+                          onError={(e) => { (e.target as HTMLImageElement).src = "/candela-logo.png"; }}
+                        />
                       </div>
                     )}
                     <label className="flex-1 py-3 text-center text-xs cursor-pointer tracking-widest uppercase transition-colors" style={{ background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.5)", borderRadius: "10px", fontFamily: "'Jost', sans-serif" }}>

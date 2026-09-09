@@ -45,7 +45,7 @@ export default function HomePage() {
   const heroY = useTransform(scrollYProgress, [0, 0.35], [0, -60]);
 
   useEffect(() => {
-    fetch("/api/products")
+    fetch("/api/products", { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {

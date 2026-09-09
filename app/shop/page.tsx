@@ -51,7 +51,7 @@ function ShopContent() {
 
   useEffect(() => {
     setLoading(true);
-    fetch("/api/products")
+    fetch("/api/products", { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {

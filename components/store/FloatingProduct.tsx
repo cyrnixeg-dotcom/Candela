@@ -75,6 +75,15 @@ export default function FloatingProduct({ product, index }: FloatingProductProps
     });
   };
 
+  const isDataUrl = Boolean(product.image?.startsWith("data:"));
+  const isExternalUrl = Boolean(product.image?.startsWith("http://") || product.image?.startsWith("https://"));
+  const isSpecial = isDataUrl || isExternalUrl;
+  const imageSrc = !product.image
+    ? "/candela-logo.png"
+    : isSpecial
+    ? product.image
+    : product.image.replace(/\.jpg$/, ".png");
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 40, scale: 0.9 }}
@@ -125,20 +134,21 @@ export default function FloatingProduct({ product, index }: FloatingProductProps
           style={{ transform: "translateZ(30px)" }}
         >
           <Image
-            src={(product.image || "/images/logo.jpg").replace(/\.jpg$/, ".png")}
+            src={imageSrc}
             alt={product.name}
             fill
+            unoptimized={isSpecial}
             sizes="(max-width: 640px) 48vw, (max-width: 1024px) 30vw, 280px"
             loading={index < 4 ? "eager" : "lazy"}
             priority={index < 2}
             quality={80}
             className="object-cover transition-transform duration-700 group-hover:scale-110"
             onError={(e) => {
-              (e.target as HTMLImageElement).src = "/images/logo.jpg";
+              (e.target as HTMLImageElement).src = "/candela-logo.png";
             }}
           />
 
-          {/* Sparkle effects on hover */}
+              {/* Sparkle effects on hover */}
           <AnimatePresence>
             {isHovered && (
               <>

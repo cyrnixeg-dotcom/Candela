@@ -94,11 +94,12 @@ export default function ShoppingBag() {
                       >
                         <div className="relative w-16 h-20 flex-shrink-0 bg-candela-cream rounded-xl overflow-hidden">
                           <Image
-                            src={item.image}
+                            src={item.image || "/candela-logo.png"}
                             alt={item.name}
                             fill
+                            unoptimized
                             className="object-cover"
-                            onError={(e) => { (e.target as HTMLImageElement).src = "/images/logo.jpg"; }}
+                            onError={(e) => { (e.target as HTMLImageElement).src = "/candela-logo.png"; }}
                           />
                         </div>
                         <div className="flex-1 min-w-0">
