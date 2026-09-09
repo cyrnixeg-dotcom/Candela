@@ -48,7 +48,9 @@ export default function HomePage() {
     fetch("/api/products")
       .then((r) => r.json())
       .then((data) => {
-        setProducts(data);
+        if (Array.isArray(data)) {
+          setProducts(data);
+        }
         setIsLoaded(true);
       })
       .catch(() => setIsLoaded(true));

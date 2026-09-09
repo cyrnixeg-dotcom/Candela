@@ -54,7 +54,9 @@ function ShopContent() {
     fetch("/api/products")
       .then((r) => r.json())
       .then((data) => {
-        setProducts(data);
+        if (Array.isArray(data)) {
+          setProducts(data);
+        }
         setLoading(false);
       })
       .catch(() => setLoading(false));

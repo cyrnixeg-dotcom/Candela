@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { STATIC_PRODUCTS } from "@/lib/data";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -25,11 +26,35 @@ export async function GET(request: NextRequest) {
       orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
     });
 
-    return NextResponse.json(products);
+    if (products && products.length > 0) {
+      return NextResponse.json(products);
+    }
   } catch (error) {
-    console.error("Error fetching products:", error);
-    return NextResponse.json({ error: "Failed to fetch products" }, { status: 500 });
+    console.warn("Database fetch products failed, falling back to static catalog:", error);
   }
+
+  // Resilient fallback: return static catalog
+  let results = [...STATIC_PRODUCTS];
+  if (category && category !== "all") {
+    results = results.filter((p) => p.category === category);
+  }
+  if (subcategory) {
+    results = results.filter((p) => p.subcategory === subcategory);
+  }
+  if (featured === "true") {
+    results = results.filter((p) => p.isFeatured);
+  }
+  if (search) {
+    const q = search.toLowerCase();
+    results = results.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.description.toLowerCase().includes(q) ||
+        p.subcategory.toLowerCase().includes(q)
+    );
+  }
+
+  return NextResponse.json(results);
 }
 
 export async function POST(request: NextRequest) {

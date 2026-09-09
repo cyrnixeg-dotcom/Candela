@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { STATIC_PRODUCTS } from "@/lib/data";
 
 export async function GET(
   request: NextRequest,
@@ -7,25 +8,34 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const product = await prisma.product.findUnique({
-      where: { id },
+    const product = await prisma.product.findFirst({
+      where: {
+        OR: [{ id }, { slug: id }],
+      },
     });
 
-    if (!product) {
-      return NextResponse.json({ error: "Product not found" }, { status: 404 });
+    if (product) {
+      // Try to increment view count, ignore error if read-only
+      try {
+        await prisma.product.update({
+          where: { id: product.id },
+          data: { views: { increment: 1 } },
+        });
+      } catch {}
+
+      return NextResponse.json(product);
     }
-
-    // Increment view count
-    await prisma.product.update({
-      where: { id },
-      data: { views: { increment: 1 } },
-    });
-
-    return NextResponse.json(product);
   } catch (error) {
-    console.error("Error fetching product:", error);
-    return NextResponse.json({ error: "Failed to fetch product" }, { status: 500 });
+    console.warn("Database fetch product by id failed:", error);
   }
+
+  // Fallback to static product catalog
+  const fallback = STATIC_PRODUCTS.find((p) => p.id === id || p.slug === id);
+  if (fallback) {
+    return NextResponse.json(fallback);
+  }
+
+  return NextResponse.json({ error: "Product not found" }, { status: 404 });
 }
 
 export async function PUT(
