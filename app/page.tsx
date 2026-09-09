@@ -95,43 +95,43 @@ export default function HomePage() {
         </div>
 
         {/* Particle field */}
-        <ParticleField />
-
-        {/* Floating hero items — z-0 so they sit BEHIND the hero text but can bleed downward */}
+        <ParticleField />        {/* Floating hero items — visible and animated on both mobile and desktop */}
         {isLoaded && [
-          { src: "/images/hero-floaters/floater-1.png", left: "8%",  top: "18%", speed: 1.2 },
-          { src: "/images/hero-floaters/floater-2.png", left: "78%", top: "12%", speed: 0.8 },
-          { src: "/images/hero-floaters/floater-3.png", left: "5%",  top: "58%", speed: 1.5 },
-          { src: "/images/hero-floaters/floater-4.png", left: "82%", top: "62%", speed: 0.9 },
-          { src: "/images/hero-floaters/floater-5.png", left: "22%", top: "82%", speed: 1.1 },
-          { src: "/images/hero-floaters/floater-6.png", left: "72%", top: "78%", speed: 1.3 },
+          { src: "/images/hero-floaters/floater-1.png", left: "3%",  top: "15%", speed: 1.1 },
+          { src: "/images/hero-floaters/floater-2.png", left: "77%", top: "12%", speed: 0.8 },
+          { src: "/images/hero-floaters/floater-3.png", left: "2%",  top: "56%", speed: 1.4 },
+          { src: "/images/hero-floaters/floater-4.png", left: "78%", top: "58%", speed: 0.9 },
+          { src: "/images/hero-floaters/floater-5.png", left: "10%", top: "84%", speed: 1.0 },
+          { src: "/images/hero-floaters/floater-6.png", left: "72%", top: "82%", speed: 1.2 },
         ].map((item, i) => (
           <HeroFloater key={i} item={item} mouseX={smoothMouseX} mouseY={smoothMouseY} speed={item.speed} />
         ))}
 
         {/* Hero text — z-10 sits above floaters */}
-        <div className="relative z-10 text-center px-6 max-w-3xl mx-auto">
+        <div className="relative z-10 text-center px-4 sm:px-6 max-w-3xl mx-auto pt-16 sm:pt-0">
           {/* Logo */}
           <motion.div
             initial={{ opacity: 0, scale: 0.6 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1.2, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="flex justify-center mb-8"
+            className="flex justify-center mb-5 sm:mb-8"
           >
-            <Image
-              src="/images/logo.jpg"
-              alt="CANDELA"
-              width={160}
-              height={160}
-              className="rounded-full shadow-candela-glow animate-pulse-soft"
-            />
+            <div className="relative w-28 h-28 sm:w-36 sm:h-36 md:w-40 md:h-40 rounded-full shadow-candela-glow animate-pulse-soft overflow-hidden">
+              <Image
+                src="/images/logo.jpg"
+                alt="CANDELA"
+                fill
+                priority
+                className="object-cover"
+              />
+            </div>
           </motion.div>
 
           <motion.h1
             initial={{ opacity: 0, y: 40 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 1, delay: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
-            className="font-display text-7xl md:text-9xl font-light text-candela-black tracking-wider mb-4"
+            className="font-display text-5xl sm:text-7xl md:text-9xl font-light text-candela-black tracking-wider mb-2 sm:mb-4"
           >
             CANDELA
           </motion.h1>
@@ -140,7 +140,7 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 0.7 }}
-            className="font-script text-4xl md:text-5xl text-candela-pink-deep mb-10"
+            className="font-script text-3xl sm:text-4xl md:text-5xl text-candela-pink-deep mb-8 sm:mb-10"
           >
             your feminine scent
           </motion.p>
@@ -149,23 +149,24 @@ export default function HomePage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, delay: 1 }}
-            className="flex flex-col sm:flex-row gap-4 justify-center items-center relative z-30 pointer-events-auto"
+            className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-center relative z-30 pointer-events-auto w-full max-w-xs sm:max-w-none mx-auto"
           >
-            <Link href="/shop" className="relative z-30 cursor-pointer">
-              <motion.button
-                whileHover={{ scale: 1.05, y: -2 }}
-                whileTap={{ scale: 0.97 }}
-                className="shine px-10 py-4 bg-gradient-to-r from-candela-pink to-candela-pink-deep text-white font-body font-bold tracking-[0.25em] text-sm uppercase shadow-xl hover:shadow-candela-product transition-shadow duration-300 rounded-full cursor-pointer"
-              >
-                Explore the Collection
-              </motion.button>
-            </Link>
-            <Link href="/account" className="relative z-30 cursor-pointer">
+            <Link href="/shop" className="w-full sm:w-auto relative z-30 cursor-pointer">
               <motion.button
                 whileHover={{ scale: 1.05 }}
-                className="px-8 py-4 border-2 border-candela-pink-deep text-candela-pink-deep bg-white/50 font-body font-bold tracking-widest text-sm uppercase hover:bg-candela-pink hover:text-white hover:border-candela-pink transition-all duration-300 rounded-full cursor-pointer"
+                whileTap={{ scale: 0.97 }}
+                className="w-full sm:w-auto px-8 py-3.5 sm:py-4 bg-candela-pink text-candela-black font-body text-xs sm:text-sm font-semibold tracking-[0.25em] uppercase hover:bg-candela-pink-deep hover:text-white transition-all duration-300 shadow-candela-glow cursor-pointer rounded-full"
               >
-                My Account
+                Shop Collection
+              </motion.button>
+            </Link>
+            <Link href="/order" className="w-full sm:w-auto relative z-30 cursor-pointer">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.97 }}
+                className="w-full sm:w-auto px-8 py-3.5 sm:py-4 border border-candela-pink-deep text-candela-pink-deep font-body text-xs sm:text-sm tracking-[0.25em] uppercase hover:bg-candela-pink-deep hover:text-white transition-all duration-300 cursor-pointer rounded-full"
+              >
+                Quick Order
               </motion.button>
             </Link>
           </motion.div>
@@ -355,7 +356,7 @@ function CategoryScene({
 
         {/* Product grid */}
         {products.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 lg:gap-8">
             {products.slice(0, 8).map((product, i) => (
               <FloatingProduct key={product.id} product={product} index={i} />
             ))}
@@ -392,16 +393,34 @@ function CategoryScene({
 
 // ─── Hero Floater ──────────────────────────────────────────────────────────
 function HeroFloater({ item, mouseX, mouseY, speed }: { item: any; mouseX: any; mouseY: any; speed: number }) {
-  const x = useTransform(mouseX, [0, 1], [-12 * speed, 12 * speed]);
-  const y = useTransform(mouseY, [0, 1], [-12 * speed, 12 * speed]);
+  const x = useTransform(mouseX, [0, 1], [-10 * speed, 10 * speed]);
+  const y = useTransform(mouseY, [0, 1], [-10 * speed, 10 * speed]);
   return (
     <motion.div
-      className="absolute hidden md:block pointer-events-none"
-      style={{ left: item.left, top: item.top, x, y, zIndex: 0 }}
+      className="absolute pointer-events-none select-none z-0"
+      style={{ left: item.left, top: item.top, x, y }}
     >
-      <div className="relative pointer-events-none" style={{ width: "160px", height: "200px" }}>
-        <Image src={item.src} alt="Candela Floater" fill className="object-contain drop-shadow-2xl pointer-events-none" />
-      </div>
+      <motion.div
+        animate={{
+          y: [0, -12 * speed, 0],
+          rotate: [0, 2 * speed, -2 * speed, 0],
+        }}
+        transition={{
+          duration: 3.5 + speed,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        className="relative pointer-events-none w-20 h-28 sm:w-28 sm:h-36 md:w-36 md:h-48 lg:w-44 lg:h-56"
+      >
+        <Image
+          src={item.src}
+          alt="Candela Floater"
+          fill
+          sizes="(max-width: 640px) 90px, (max-width: 768px) 120px, 180px"
+          className="object-contain drop-shadow-xl pointer-events-none opacity-85 sm:opacity-95"
+          priority
+        />
+      </motion.div>
     </motion.div>
   );
 }

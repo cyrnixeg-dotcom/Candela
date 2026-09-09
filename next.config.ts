@@ -8,23 +8,6 @@ const nextConfig = {
   outputFileTracingIncludes: {
     '/api/**/*': ['./prisma/**/*'],
   },
-  async rewrites() {
-    return {
-      beforeFiles: [],
-      afterFiles: [
-        {
-          source: '/api/uploads/:file*',
-          destination: '/images/products/:file*',
-        },
-      ],
-      fallback: [
-        {
-          source: '/images/products/:file*',
-          destination: '/api/uploads/:file*',
-        },
-      ],
-    };
-  },
 };
 
 export default nextConfig;

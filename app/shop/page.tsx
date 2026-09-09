@@ -205,7 +205,7 @@ function ShopContent() {
           <AnimatePresence mode="popLayout">
             <motion.div
               layout
-              className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8"
+              className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 lg:gap-8"
             >
               {filtered.map((product, i) => (
                 <motion.div

@@ -131,14 +131,15 @@ export default function ProductPage() {
                 transition={{
                   y: { duration: 5, repeat: Infinity, ease: "easeInOut" },
                 }}
-                className="relative rounded-[32px] overflow-hidden border-[4px] border-white/60 shadow-[0_30px_60px_rgba(244,167,185,0.4)]"
-                style={{ width: "100%", maxWidth: "500px", aspectRatio: "4/3" }}
+                style={{ width: "100%", maxWidth: "460px" }}
+                className="relative aspect-square rounded-[32px] overflow-hidden border-[4px] border-white/80 shadow-[0_20px_50px_rgba(244,167,185,0.3)] bg-gradient-to-b from-candela-cream/50 to-white/60"
               >
                 <Image
-                  src={product.image}
+                  src={(product.image || "/images/logo.jpg").replace(/\.jpg$/, ".png")}
                   alt={product.name}
                   fill
-                  className="object-cover transition-transform duration-1000 hover:scale-105"
+                  sizes="(max-width: 768px) 90vw, 460px"
+                  className="object-contain p-6 transition-transform duration-700 hover:scale-105"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = "/images/logo.jpg";
                   }}
