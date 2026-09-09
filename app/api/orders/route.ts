@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { generateOrderNumber } from "@/lib/utils";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { STATIC_PRODUCTS } from "@/lib/data";
 
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -97,34 +98,64 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calculate total from DB prices (never trust client-sent prices)
+    // Calculate total from DB prices (matching by either id or slug)
     const productIds = items.map((item: { productId: string }) => item.productId);
     const products = await prisma.product.findMany({
-      where: { id: { in: productIds } },
+      where: {
+        OR: [
+          { id: { in: productIds } },
+          { slug: { in: productIds } },
+        ],
+      },
     });
 
-    const missing = items.filter(
-      (it: { productId: string }) => !products.some((p) => p.id === it.productId)
-    );
-    if (missing.length > 0) {
-      return NextResponse.json(
-        { error: "One or more items in your bag are no longer available. Please review your cart." },
-        { status: 400 }
-      );
-    }
-
     let total = 0;
-    const orderItems = items.map((item: { productId: string; quantity: number }) => {
-      const product = products.find((p) => p.id === item.productId)!;
+    const orderItems: { productId: string; quantity: number; price: number }[] = [];
+
+    for (const item of items) {
+      let product: any = products.find((p) => p.id === item.productId || p.slug === item.productId);
+      if (!product) {
+        const staticP = STATIC_PRODUCTS.find((p) => p.id === item.productId || p.slug === item.productId);
+        if (staticP) {
+          try {
+            product = await prisma.product.upsert({
+              where: { slug: staticP.slug },
+              update: {},
+              create: {
+                name: staticP.name,
+                slug: staticP.slug,
+                description: staticP.description,
+                price: staticP.price,
+                category: staticP.category,
+                subcategory: staticP.subcategory,
+                image: staticP.image,
+                inStock: staticP.inStock,
+                isFeatured: staticP.isFeatured,
+              },
+            });
+          } catch {
+            product = await prisma.product.findFirst({
+              where: { OR: [{ id: staticP.id }, { slug: staticP.slug }] },
+            });
+          }
+        }
+      }
+
+      if (!product) {
+        return NextResponse.json(
+          { error: "One or more items in your bag are no longer available. Please review your cart." },
+          { status: 400 }
+        );
+      }
       const qty = Math.max(1, Math.min(99, item.quantity || 1));
       const itemTotal = product.price * qty;
       total += itemTotal;
-      return {
-        productId: item.productId,
+      orderItems.push({
+        productId: product.id, // Always use real DB product.id for foreign key
         quantity: qty,
         price: product.price,
-      };
-    });
+      });
+    }
 
     // Create order with collision-resistant loop
     let order = null;

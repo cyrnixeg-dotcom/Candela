@@ -13,33 +13,52 @@ export async function POST(req: Request) {
       );
     }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
+    const cleanEmail = email.trim().toLowerCase();
 
-    if (existingUser) {
-      return NextResponse.json(
-        { error: "Email already in use" },
-        { status: 400 }
-      );
-    }
+    const existingUser = await prisma.user.findUnique({
+      where: { email: cleanEmail },
+    });
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // If user already exists as a guest checkout without a password, activate their account
+    if (existingUser) {
+      if (existingUser.password) {
+        return NextResponse.json(
+          { error: "Email already registered. Please sign in." },
+          { status: 400 }
+        );
+      }
+
+      const updated = await prisma.user.update({
+        where: { id: existingUser.id },
+        data: {
+          name: name?.trim() || existingUser.name || "Customer",
+          password: hashedPassword,
+        },
+      });
+
+      return NextResponse.json({
+        user: { id: updated.id, email: updated.email, name: updated.name },
+      });
+    }
+
     const user = await prisma.user.create({
       data: {
-        name,
-        email,
+        name: name?.trim() || "Customer",
+        email: cleanEmail,
         password: hashedPassword,
-        role: "USER"
+        role: "USER",
       },
     });
 
-    return NextResponse.json({ user: { id: user.id, email: user.email, name: user.name } });
+    return NextResponse.json({
+      user: { id: user.id, email: user.email, name: user.name },
+    });
   } catch (error) {
-    console.error(error);
+    console.error("Registration error:", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Failed to create account. Please try again." },
       { status: 500 }
     );
   }

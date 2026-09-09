@@ -13,16 +13,28 @@ export default async function AccountPage() {
     redirect("/login");
   }
 
-  // Fetch orders for this user
-  const orders = await prisma.order.findMany({
-    where: { userId: session.user.id },
-    orderBy: { createdAt: "desc" },
-    include: {
-      items: {
-        include: { product: true }
-      }
-    }
-  });
+  // Fetch orders for this user by userId or email with zero-crash fallback
+  let orders: any[] = [];
+  try {
+    const userEmail = session.user.email?.toLowerCase();
+    orders = await prisma.order.findMany({
+      where: {
+        OR: [
+          ...(session.user.id ? [{ userId: session.user.id }] : []),
+          ...(userEmail ? [{ user: { email: userEmail } }] : []),
+        ],
+      },
+      orderBy: { createdAt: "desc" },
+      include: {
+        items: {
+          include: { product: true },
+        },
+      },
+    });
+  } catch (err) {
+    console.warn("Could not fetch user orders in account page:", err);
+    orders = [];
+  }
 
   return (
     <main className="min-h-screen bg-candela-cream">

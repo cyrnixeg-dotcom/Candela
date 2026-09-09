@@ -7,8 +7,10 @@ export async function GET(
 ) {
   const { id } = await params;
   try {
-    const order = await prisma.order.findUnique({
-      where: { id },
+    const order = await prisma.order.findFirst({
+      where: {
+        OR: [{ id }, { orderNumber: id }],
+      },
       include: {
         user: true,
         items: {
@@ -42,8 +44,18 @@ export async function PUT(
   try {
     const body = await request.json();
 
+    const existing = await prisma.order.findFirst({
+      where: {
+        OR: [{ id }, { orderNumber: id }],
+      },
+    });
+
+    if (!existing) {
+      return NextResponse.json({ error: "Order not found" }, { status: 404 });
+    }
+
     const order = await prisma.order.update({
-      where: { id },
+      where: { id: existing.id },
       data: { status: body.status },
       include: {
         user: true,

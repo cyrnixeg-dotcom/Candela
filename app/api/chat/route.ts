@@ -47,6 +47,10 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { customerId, customerName, customerPhone, content, fromOwner } = body;
 
+    if (!content || !content.trim()) {
+      return NextResponse.json({ error: "Message content cannot be empty" }, { status: 400 });
+    }
+
     let user;
     if (customerId) {
       user = await prisma.user.findUnique({ where: { id: customerId } });

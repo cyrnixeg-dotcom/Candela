@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { STATIC_PRODUCTS } from "@/lib/data";
+import { slugify } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
@@ -61,15 +62,25 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    let baseSlug = slugify(body.slug || body.name || "product");
+    if (!baseSlug) baseSlug = "product-" + Date.now();
+
+    // Ensure unique slug
+    let uniqueSlug = baseSlug;
+    let count = 1;
+    while (await prisma.product.findUnique({ where: { slug: uniqueSlug } })) {
+      uniqueSlug = `${baseSlug}-${count++}`;
+    }
+
     const product = await prisma.product.create({
       data: {
-        name: body.name,
-        slug: body.slug,
-        description: body.description,
-        price: parseFloat(body.price),
-        category: body.category,
-        subcategory: body.subcategory,
-        image: body.image,
+        name: body.name || "Untitled Product",
+        slug: uniqueSlug,
+        description: body.description || "",
+        price: parseFloat(body.price) || 0,
+        category: body.category || "body-beauty",
+        subcategory: body.subcategory || "General",
+        image: body.image || "/candela-logo.png",
         inStock: body.inStock ?? true,
         isFeatured: body.isFeatured ?? false,
       },
