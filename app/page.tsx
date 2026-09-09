@@ -275,7 +275,7 @@ export default function HomePage() {
             <p className="font-body text-sm text-candela-charcoal/60 mt-1">We&apos;d love to hear from you.</p>
           </div>
           <div className="flex gap-4">
-            <a href={`tel:${settings.phone.replace(/\s+/g, '')}`}>
+            <a href={`tel:${(settings?.phone || "+201000000000").replace(/\s+/g, '')}`}>
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.97 }}

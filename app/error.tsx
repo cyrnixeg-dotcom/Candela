@@ -28,6 +28,11 @@ export default function GlobalStoreError({
           <p className="text-gray-500 font-body text-xs leading-relaxed">
             We encountered a temporary issue loading this page. Your shopping bag and account data are completely safe.
           </p>
+          {error?.message && (
+            <div className="mt-4 p-3 bg-red-50 text-red-700 text-xs rounded-xl font-mono text-left max-h-24 overflow-y-auto">
+              {error.message}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
