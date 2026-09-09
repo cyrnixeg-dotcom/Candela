@@ -54,11 +54,28 @@ export default function ParticleField() {
       });
     };
 
+    const isMobile = window.innerWidth < 768;
+    const maxParticles = isMobile ? 20 : 40;
+    const spawnRate = isMobile ? 16 : 9;
+
+    let isVisible = true;
+    const observer = new IntersectionObserver(([entry]) => {
+      isVisible = entry.isIntersecting;
+      if (isVisible && !animRef.current) {
+        animRef.current = requestAnimationFrame(animate);
+      }
+    }, { threshold: 0.05 });
+    observer.observe(canvas);
+
     let spawnTimer = 0;
     const animate = () => {
+      if (!isVisible) {
+        animRef.current = 0;
+        return;
+      }
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       spawnTimer++;
-      if (spawnTimer > 8) {
+      if (spawnTimer > spawnRate && particles.length < maxParticles) {
         spawnParticle();
         spawnTimer = 0;
       }
@@ -89,10 +106,11 @@ export default function ParticleField() {
       animRef.current = requestAnimationFrame(animate);
     };
 
-    animate();
+    animRef.current = requestAnimationFrame(animate);
     return () => {
       window.removeEventListener("resize", resize);
-      cancelAnimationFrame(animRef.current);
+      observer.disconnect();
+      if (animRef.current) cancelAnimationFrame(animRef.current);
     };
   }, []);
 

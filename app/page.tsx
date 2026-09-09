@@ -88,6 +88,8 @@ export default function HomePage() {
             src="/images/backgrounds/bg-2.png"
             alt="Candela Background"
             fill
+            sizes="100vw"
+            quality={65}
             className="object-cover opacity-60"
             priority
           />
@@ -121,6 +123,7 @@ export default function HomePage() {
                 src="/images/logo.jpg"
                 alt="CANDELA"
                 fill
+                sizes="(max-width: 640px) 120px, 160px"
                 priority
                 className="object-cover"
               />
@@ -329,7 +332,7 @@ function CategoryScene({
           WebkitMaskImage: "linear-gradient(to bottom, transparent 0px, black 60px, black calc(100% - 60px), transparent 100%)",
         }}
       >
-        <Image src={bgImage} alt={title} fill className="object-cover opacity-70 pointer-events-none" />
+        <Image src={bgImage} alt={title} fill sizes="100vw" quality={65} loading="lazy" className="object-cover opacity-70 pointer-events-none" />
         <div className="absolute inset-0 bg-white/40 backdrop-blur-[8px] pointer-events-none" />
         {warmTone && <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_50%,rgba(201,169,110,0.12),transparent_70%)] pointer-events-none" />}
       </div>

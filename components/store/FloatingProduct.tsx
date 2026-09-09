@@ -95,7 +95,10 @@ export default function FloatingProduct({ product, index }: FloatingProductProps
           boxShadow: "0 4px 24px rgba(244,167,185,0.12)",
           rotateX: isHovered ? rotateX : 0,
           rotateY: isHovered ? rotateY : 0,
-          transformStyle: "preserve-3d"
+          transformStyle: "preserve-3d",
+          WebkitMaskImage: "-webkit-radial-gradient(white, black)",
+          transform: "translateZ(0)",
+          willChange: isHovered ? "transform" : "auto",
         }}
         animate={!isHovered ? {
           y: [0, -10, 0],
@@ -125,6 +128,10 @@ export default function FloatingProduct({ product, index }: FloatingProductProps
             src={(product.image || "/images/logo.jpg").replace(/\.jpg$/, ".png")}
             alt={product.name}
             fill
+            sizes="(max-width: 640px) 48vw, (max-width: 1024px) 30vw, 280px"
+            loading={index < 4 ? "eager" : "lazy"}
+            priority={index < 2}
+            quality={80}
             className="object-cover transition-transform duration-700 group-hover:scale-110"
             onError={(e) => {
               (e.target as HTMLImageElement).src = "/images/logo.jpg";
