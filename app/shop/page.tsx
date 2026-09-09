@@ -39,7 +39,7 @@ function ShopContent() {
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("all");
   const [activeSubcat, setActiveSubcat] = useState("");
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500]);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 5000]);
   const [showInStock, setShowInStock] = useState(false);
   const [sortBy, setSortBy] = useState("featured");
   const searchParams = useSearchParams();

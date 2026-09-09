@@ -357,7 +357,7 @@ function CategoryScene({
         {/* Product grid */}
         {products.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 lg:gap-8">
-            {products.slice(0, 8).map((product, i) => (
+            {products.slice(0, 12).map((product, i) => (
               <FloatingProduct key={product.id} product={product} index={i} />
             ))}
           </div>
