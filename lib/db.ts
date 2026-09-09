@@ -9,7 +9,12 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function getDbUrl(): string {
-  // If remote PostgreSQL or external URL is provided, use it directly
+  // If remote PostgreSQL (Neon/Vercel Postgres) is provided, use it directly
+  if (process.env.POSTGRES_PRISMA_URL) {
+    return process.env.POSTGRES_PRISMA_URL;
+  }
+
+  // If remote external URL is provided, use it directly
   if (process.env.DATABASE_URL && !process.env.DATABASE_URL.startsWith("file:")) {
     return process.env.DATABASE_URL;
   }
@@ -185,16 +190,23 @@ export async function ensureDbReady(): Promise<void> {
   }
 
   globalForPrisma.dbReadyPromise = (async () => {
+    const isPostgres = Boolean(
+      process.env.POSTGRES_PRISMA_URL ||
+      (process.env.DATABASE_URL && !process.env.DATABASE_URL.startsWith("file:"))
+    );
+
     try {
-      // Test if table User exists
-      await prisma.$queryRawUnsafe('SELECT id FROM "User" LIMIT 1');
+      // Test if table User exists using pure Prisma ORM
+      await prisma.user.findFirst({ select: { id: true } });
     } catch {
-      console.log("⚡ Auto-initializing database schema...");
-      for (const statement of SCHEMA_DDL_STATEMENTS) {
-        try {
-          await prisma.$executeRawUnsafe(statement);
-        } catch (err) {
-          console.warn("DDL execution warning:", err);
+      if (!isPostgres) {
+        console.log("⚡ Auto-initializing SQLite database schema...");
+        for (const statement of SCHEMA_DDL_STATEMENTS) {
+          try {
+            await prisma.$executeRawUnsafe(statement);
+          } catch (err) {
+            console.warn("DDL execution warning:", err);
+          }
         }
       }
     }

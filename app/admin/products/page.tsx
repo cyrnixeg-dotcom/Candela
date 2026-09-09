@@ -142,8 +142,16 @@ export default function AdminProductsPage() {
         return;
       }
 
+      const savedProduct: Product = await res.json();
+      if (editingProduct) {
+        setProducts((prev) =>
+          prev.map((p) => (p.id === editingProduct.id ? { ...p, ...savedProduct } : p))
+        );
+      } else {
+        setProducts((prev) => [savedProduct, ...prev]);
+      }
+
       setShowForm(false);
-      load();
     } catch (err: any) {
       console.error("Save error:", err);
       alert(`Network error saving product: ${err?.message || "Unknown error"}`);
@@ -155,17 +163,20 @@ export default function AdminProductsPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this product?")) return;
     try {
+      // Optimistically remove immediately from UI
+      setProducts((prev) => prev.filter((p) => p.id !== id));
+
       const res = await fetch(`/api/products/${id}`, { method: "DELETE" });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         alert(`Failed to delete product: ${err.error || res.statusText}`);
+        load(); // Revert on error
         return;
       }
-      setProducts((prev) => prev.filter((p) => p.id !== id));
-      load();
     } catch (err: any) {
       console.error("Delete error:", err);
       alert(`Network error deleting product: ${err?.message || "Unknown error"}`);
+      load();
     }
   };
 
