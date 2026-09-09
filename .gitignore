@@ -33,6 +33,7 @@ yarn-error.log*
 # env files
 .env*
 !.env.example
+!.env.production
 
 # vercel
 .vercel
@@ -42,7 +43,7 @@ yarn-error.log*
 next-env.d.ts
 
 # SQLite database files
-prisma/*.db
+!prisma/dev.db
 prisma/*.db-journal
 prisma/*.db-shm
 prisma/*.db-wal
@@ -62,3 +63,5 @@ apply_fixes.js
 list_users.js
 seed_admin.js
 
+
+.vercel
