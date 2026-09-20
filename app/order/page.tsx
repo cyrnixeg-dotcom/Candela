@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession } from "next-auth/react";
 import Image from "next/image";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Navigation from "@/components/store/Navigation";
 import ShoppingBag from "@/components/store/ShoppingBag";
@@ -106,7 +107,7 @@ export default function OrderPage() {
   const stepIndex = steps.indexOf(step);
 
   if (step === "success" && createdOrder) {
-    return <OrderSuccess order={createdOrder} />;
+    return <OrderSuccess order={createdOrder} customerPhone={formData.customerPhone} />;
   }
 
   return (
@@ -372,7 +373,7 @@ export default function OrderPage() {
   );
 }
 
-function OrderSuccess({ order }: { order: CreatedOrder }) {
+function OrderSuccess({ order, customerPhone }: { order: CreatedOrder; customerPhone?: string }) {
   const settings = useSettingsStore((s) => s.settings);
   return (
     <main className="min-h-screen bg-candela-cream flex items-center justify-center">
@@ -444,24 +445,24 @@ function OrderSuccess({ order }: { order: CreatedOrder }) {
             Keep your order number to track your order status
           </p>
           <div className="flex gap-3 justify-center">
-            <a href={`/track`}>
+            <Link href={`/track?orderNumber=${encodeURIComponent(order.orderNumber)}${customerPhone ? `&phone=${encodeURIComponent(customerPhone)}` : ''}`}>
               <motion.button
                 whileHover={{ scale: 1.03 }}
-                className="px-6 py-3 bg-candela-black text-white font-body text-sm tracking-widest uppercase"
+                className="px-6 py-3 bg-candela-black text-white font-body text-sm tracking-widest uppercase cursor-pointer"
                 style={{ borderRadius: "12px" }}
               >
-                Track Order
+                Track Order →
               </motion.button>
-            </a>
-            <a href="/shop">
+            </Link>
+            <Link href="/shop">
               <motion.button
                 whileHover={{ scale: 1.03 }}
-                className="px-6 py-3 border border-candela-pink text-candela-pink font-body text-sm tracking-widest uppercase"
+                className="px-6 py-3 border border-candela-pink text-candela-pink font-body text-sm tracking-widest uppercase cursor-pointer"
                 style={{ borderRadius: "12px" }}
               >
                 Continue Shopping
               </motion.button>
-            </a>
+            </Link>
           </div>
         </motion.div>
       </motion.div>

@@ -80,9 +80,7 @@ export default function FloatingProduct({ product, index }: FloatingProductProps
   const isSpecial = isDataUrl || isExternalUrl;
   const imageSrc = !product.image
     ? "/candela-logo.png"
-    : isSpecial
-    ? product.image
-    : product.image.replace(/\.jpg$/, ".png");
+    : product.image;
 
   return (
     <motion.div

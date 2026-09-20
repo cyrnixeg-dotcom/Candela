@@ -69,7 +69,7 @@ export default function AccountView({ user, orders }: AccountViewProps) {
                   whileTap={{ scale: 0.97 }}
                   className="px-5 py-2.5 bg-candela-black text-white font-body text-xs font-bold tracking-widest uppercase rounded-xl hover:bg-candela-charcoal transition-all shadow-sm flex items-center gap-2 cursor-pointer"
                 >
-                  <span>??</span>
+                  <span>⚙️</span>
                   Admin Dashboard
                 </motion.button>
               </Link>
@@ -80,7 +80,7 @@ export default function AccountView({ user, orders }: AccountViewProps) {
               onClick={() => signOut({ callbackUrl: '/login' })}
               className="px-5 py-2.5 border border-red-200 text-red-600 font-body text-xs font-bold tracking-widest uppercase rounded-xl hover:bg-red-50 transition-all cursor-pointer flex items-center gap-1.5"
             >
-              <span>?</span>
+              <span>🚪</span>
               Sign Out
             </motion.button>
           </div>
@@ -89,7 +89,7 @@ export default function AccountView({ user, orders }: AccountViewProps) {
         {isAdmin && (
           <div className="mt-6 p-4 bg-purple-50 border border-purple-200/60 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-3">
-              <span className="text-2xl">??</span>
+              <span className="text-2xl">👑</span>
               <div>
                 <p className="font-body text-xs font-bold uppercase tracking-wider text-purple-900">
                   Store Administrator Mode
@@ -101,7 +101,7 @@ export default function AccountView({ user, orders }: AccountViewProps) {
             </div>
             <Link href="/admin">
               <button className="whitespace-nowrap px-4 py-2 bg-purple-600 text-white rounded-xl text-xs font-bold tracking-widest uppercase hover:bg-purple-700 transition-colors">
-                Open Admin ?
+                Open Admin →
               </button>
             </Link>
           </div>
@@ -112,13 +112,13 @@ export default function AccountView({ user, orders }: AccountViewProps) {
       <div className="flex justify-between items-center mb-6">
         <h2 className="font-display text-3xl text-candela-charcoal font-light">Order History</h2>
         <Link href="/track" className="text-xs font-body font-bold text-candela-pink-deep tracking-widest uppercase hover:underline">
-          Track an order by number ?
+          Track an order by number →
         </Link>
       </div>
 
       {orders.length === 0 ? (
         <div className="bg-white p-14 rounded-3xl shadow-sm text-center border border-candela-pink/15">
-          <div className="text-5xl mb-4 opacity-40">???</div>
+          <div className="text-5xl mb-4 opacity-40">🛍️</div>
           <p className="font-display text-2xl text-candela-charcoal mb-2 font-light">
             No orders found for this account
           </p>
@@ -181,7 +181,14 @@ export default function AccountView({ user, orders }: AccountViewProps) {
                   {order.items.map((item) => (
                     <div key={item.id} className="flex items-center gap-4">
                       <div className="w-16 h-16 bg-candela-cream rounded-xl relative overflow-hidden flex-shrink-0">
-                        <img src={item.product.image} alt={item.product.name} className="object-cover w-full h-full" />
+                        <img
+                          src={item.product.image || "/candela-logo.png"}
+                          alt={item.product.name}
+                          className="object-cover w-full h-full"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = "/candela-logo.png";
+                          }}
+                        />
                       </div>
                       <div className="flex-grow">
                         <p className="font-bold text-candela-charcoal">{item.product.name}</p>

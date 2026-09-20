@@ -3,6 +3,8 @@ import { revalidatePath } from "next/cache";
 import { prisma, ensureDbReady } from "@/lib/db";
 import { STATIC_PRODUCTS } from "@/lib/data";
 import { slugify } from "@/lib/utils";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -73,6 +75,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     await ensureDbReady();
+    const session = await getServerSession(authOptions);
+    if (!session || (session.user as any)?.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
 
     if (!body.name || typeof body.name !== "string" || !body.name.trim()) {

@@ -267,9 +267,9 @@ export default function Navigation() {
                 transition={{ delay: 0.5 }}
                 className="mt-8"
               >
-                <a href="tel:+201000000000">
-                  <button className="px-8 py-3 bg-candela-black text-white font-body text-sm tracking-widest uppercase">
-                    📞 Call Candela
+                <a href={`tel:${(settings.phone || "+201000000000").replace(/\s+/g, "")}`}>
+                  <button className="px-8 py-3 bg-candela-black text-white font-body text-sm tracking-widest uppercase cursor-pointer">
+                    📞 Call {settings.store_name || "Candela"}
                   </button>
                 </a>
               </motion.div>

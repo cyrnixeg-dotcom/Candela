@@ -17,6 +17,9 @@ const nextConfig = {
   outputFileTracingIncludes: {
     '/**': ['./prisma/**/*', './public/**/*'],
   },
+  turbopack: {
+    root: __dirname,
+  },
 };
 
 export default nextConfig;

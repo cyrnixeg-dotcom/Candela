@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
 import { prisma, ensureDbReady } from "@/lib/db";
 import { STATIC_PRODUCTS } from "@/lib/data";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -61,6 +63,11 @@ export async function PUT(
   const { id } = await params;
   try {
     await ensureDbReady();
+    const session = await getServerSession(authOptions);
+    if (!session || (session.user as any)?.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
 
     const existing = await prisma.product.findFirst({
@@ -117,6 +124,11 @@ export async function DELETE(
   const { id } = await params;
   try {
     await ensureDbReady();
+    const session = await getServerSession(authOptions);
+    if (!session || (session.user as any)?.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const existing = await prisma.product.findFirst({
       where: { OR: [{ id }, { slug: id }] },
     });

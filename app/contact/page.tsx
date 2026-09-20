@@ -108,20 +108,39 @@ export default function ContactPage() {
           )}
 
           {/* Contact methods */}
-          <div className="flex flex-col sm:flex-row gap-4 mt-8 text-center">
-            <a href={`tel:${settings.phone.replace(/\s+/g, '')}`} className="flex-1 py-4 border border-candela-pink/20 hover:border-candela-pink transition-colors" style={{ borderRadius: "12px" }}>
-              <p className="font-body text-xs text-candela-charcoal/50 tracking-widest uppercase mb-1">Call Us</p>
-              <p className="font-display text-lg text-candela-black">{settings.phone}</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8 text-center">
+            <a
+              href={`tel:${(settings?.phone || "+201000000000").replace(/\s+/g, '')}`}
+              className="py-4 px-3 border border-candela-pink/20 hover:border-candela-pink hover:bg-white/60 transition-all cursor-pointer"
+              style={{ borderRadius: "16px" }}
+            >
+              <div className="text-xl mb-1">📞</div>
+              <p className="font-body text-[11px] text-candela-charcoal/50 tracking-widest uppercase mb-1">Call Us</p>
+              <p className="font-display text-base text-candela-black font-medium">{settings?.phone || "+20 100 000 0000"}</p>
             </a>
+
             <a 
-              href={`https://instagram.com/${settings.instagram.replace('@', '')}`} 
+              href={`https://wa.me/${(settings?.whatsapp || settings?.phone || "+201000000000").replace(/\D/g, '').replace(/^0/, '20')}?text=${encodeURIComponent("Hello Candela! I would like to inquire about your collection 🌸")}`}
               target="_blank" 
               rel="noopener noreferrer" 
-              className="flex-1 py-4 border border-candela-pink/20 hover:border-candela-pink transition-colors" 
-              style={{ borderRadius: "12px" }}
+              className="py-4 px-3 border border-emerald-200 bg-emerald-50/40 hover:bg-emerald-50 hover:border-emerald-400 transition-all cursor-pointer" 
+              style={{ borderRadius: "16px" }}
             >
-              <p className="font-body text-xs text-candela-charcoal/50 tracking-widest uppercase mb-1">Instagram</p>
-              <p className="font-display text-lg text-candela-black">{settings.instagram}</p>
+              <div className="text-xl mb-1">💬</div>
+              <p className="font-body text-[11px] text-emerald-800/60 tracking-widest uppercase mb-1 font-semibold">WhatsApp</p>
+              <p className="font-display text-base text-emerald-950 font-medium">Chat on WhatsApp</p>
+            </a>
+
+            <a 
+              href={`https://instagram.com/${(settings?.instagram || "@candela.official").replace('@', '').replace(/\s+/g, '')}`} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="py-4 px-3 border border-candela-pink/20 hover:border-candela-pink hover:bg-white/60 transition-all cursor-pointer" 
+              style={{ borderRadius: "16px" }}
+            >
+              <div className="text-xl mb-1">📸</div>
+              <p className="font-body text-[11px] text-candela-charcoal/50 tracking-widest uppercase mb-1">Instagram</p>
+              <p className="font-display text-base text-candela-black font-medium">{settings?.instagram || "@candela.official"}</p>
             </a>
           </div>
         </div>

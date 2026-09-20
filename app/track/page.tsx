@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import Navigation from "@/components/store/Navigation";
@@ -41,12 +42,36 @@ const STATUS_ICONS: Record<string, string> = {
   CANCELLED: "❌",
 };
 
-export default function TrackPage() {
-  const [orderNumber, setOrderNumber] = useState("");
-  const [phone, setPhone] = useState("");
+function TrackContent() {
+  const searchParams = useSearchParams();
+  const urlOrder = searchParams.get("orderNumber");
+  const urlPhone = searchParams.get("phone");
+
+  const [orderNumber, setOrderNumber] = useState(urlOrder || "");
+  const [phone, setPhone] = useState(urlPhone || "");
   const [order, setOrder] = useState<TrackedOrder | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (urlOrder) setOrderNumber(urlOrder);
+    if (urlPhone) setPhone(urlPhone);
+
+    if (urlOrder && urlPhone) {
+      setLoading(true);
+      setError("");
+      fetch(
+        `/api/orders/track?orderNumber=${encodeURIComponent(urlOrder)}&phone=${encodeURIComponent(urlPhone)}`
+      )
+        .then((r) => r.json())
+        .then((data) => {
+          if (data.error) setError(data.error);
+          else setOrder(data);
+        })
+        .catch(() => setError("Something went wrong. Please try again."))
+        .finally(() => setLoading(false));
+    }
+  }, [urlOrder, urlPhone]);
 
   const handleTrack = async () => {
     if (!orderNumber.trim() || !phone.trim()) return;
@@ -267,5 +292,13 @@ export default function TrackPage() {
         </div>
       </div>
     </main>
+  );
+}
+
+export default function TrackPage() {
+  return (
+    <Suspense>
+      <TrackContent />
+    </Suspense>
   );
 }

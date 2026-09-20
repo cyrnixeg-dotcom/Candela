@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma, ensureDbReady } from "@/lib/db";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 const DEFAULT_SETTINGS: Record<string, string> = {
   phone: "+20 100 000 0000",
@@ -30,6 +32,11 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     await ensureDbReady();
+    const session = await getServerSession(authOptions);
+    if (!session || (session.user as any)?.role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
     const body = await request.json();
     for (const [key, value] of Object.entries(body)) {
       await prisma.siteSetting.upsert({

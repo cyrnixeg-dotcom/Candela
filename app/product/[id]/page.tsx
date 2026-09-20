@@ -91,9 +91,7 @@ export default function ProductPage() {
   const isSpecial = isDataUrl || isExternalUrl;
   const imageSrc = !product.image
     ? "/candela-logo.png"
-    : isSpecial
-    ? product.image
-    : product.image.replace(/\.jpg$/, ".png");
+    : product.image;
 
   return (
     <main className="min-h-screen bg-candela-cream">
