@@ -78,11 +78,41 @@ export async function PUT(
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
 
+    // Determine unique slug if slug or name is modified
+    let newSlug = existing.slug;
+    if (body.slug && typeof body.slug === "string" && body.slug.trim()) {
+      const candidateSlug = body.slug.trim();
+      if (candidateSlug !== existing.slug) {
+        newSlug = candidateSlug;
+        let count = 1;
+        while (
+          await prisma.product.findFirst({
+            where: { slug: newSlug, NOT: { id: existing.id } },
+          })
+        ) {
+          newSlug = `${candidateSlug}-${count++}`;
+        }
+      }
+    } else if (body.name && typeof body.name === "string" && body.name.trim() && body.name.trim() !== existing.name) {
+      const candidateSlug = body.name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      if (candidateSlug && candidateSlug !== existing.slug) {
+        newSlug = candidateSlug;
+        let count = 1;
+        while (
+          await prisma.product.findFirst({
+            where: { slug: newSlug, NOT: { id: existing.id } },
+          })
+        ) {
+          newSlug = `${candidateSlug}-${count++}`;
+        }
+      }
+    }
+
     const product = await prisma.product.update({
       where: { id: existing.id },
       data: {
         ...(body.name !== undefined && { name: body.name.trim() }),
-        ...(body.slug !== undefined && { slug: body.slug.trim() }),
+        slug: newSlug,
         ...(body.description !== undefined && { description: body.description }),
         ...(body.price !== undefined && {
           price: typeof body.price === "number" ? body.price : parseFloat(body.price) || 0,

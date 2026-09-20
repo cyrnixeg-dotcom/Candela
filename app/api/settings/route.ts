@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma, ensureDbReady } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 const DEFAULT_SETTINGS: Record<string, string> = {
   phone: "+20 100 000 0000",
@@ -22,10 +26,18 @@ export async function GET() {
       acc[s.key] = s.value;
       return acc;
     }, { ...DEFAULT_SETTINGS });
-    return NextResponse.json(settingsMap);
+    return NextResponse.json(settingsMap, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+      },
+    });
   } catch (error) {
     console.error("Settings fetch error:", error);
-    return NextResponse.json(DEFAULT_SETTINGS);
+    return NextResponse.json(DEFAULT_SETTINGS, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+      },
+    });
   }
 }
 
@@ -45,7 +57,20 @@ export async function POST(request: NextRequest) {
         create: { key, value: value as string },
       });
     }
-    return NextResponse.json({ success: true });
+
+    try {
+      revalidatePath("/");
+      revalidatePath("/about");
+      revalidatePath("/contact");
+      revalidatePath("/shop");
+      revalidatePath("/api/settings");
+    } catch {}
+
+    return NextResponse.json({ success: true }, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+      },
+    });
   } catch (error) {
     return NextResponse.json({ error: "Failed to update settings" }, { status: 500 });
   }

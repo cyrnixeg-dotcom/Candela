@@ -212,23 +212,33 @@ export async function ensureDbReady(): Promise<void> {
     }
 
     try {
-      // Ensure admin exists
+      // Ensure admin exists without overwriting custom admin email
       const adminEmail = "admin@candela.store";
-      const existingAdmin = await prisma.user.findUnique({ where: { email: adminEmail } });
+      const existingAdmin = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { email: adminEmail },
+            { role: "ADMIN" },
+          ],
+        },
+      });
       if (!existingAdmin) {
         await prisma.user.create({
           data: {
             email: adminEmail,
             password: "$2b$10$Y7ftGrj4Jv4VNkwLm89JbuCyF.y3Z4FMPuHFthluGKNXBr48d/oiq", // candela2024
-            name: "Candela Owner",
+            name: "Candela Admin",
             role: "ADMIN",
           },
         });
       }
 
-      // Ensure products seeded if empty
+      // Ensure products seeded only once on fresh setup
+      const isCatalogInit = await prisma.siteSetting.findUnique({
+        where: { key: "catalog_seeded" },
+      });
       const count = await prisma.product.count();
-      if (count === 0) {
+      if (!isCatalogInit && count === 0) {
         console.log("⚡ Seeding catalog into fresh database...");
         for (const p of STATIC_PRODUCTS) {
           await prisma.product.create({
@@ -245,6 +255,9 @@ export async function ensureDbReady(): Promise<void> {
             },
           }).catch(() => {});
         }
+        await prisma.siteSetting.create({
+          data: { key: "catalog_seeded", value: "true" },
+        }).catch(() => {});
       }
     } catch (seedErr) {
       console.warn("DB seed check warning:", seedErr);

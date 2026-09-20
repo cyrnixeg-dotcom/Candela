@@ -39,14 +39,14 @@ export default function AdminSidebar() {
 
   // 1. Fetch Profile & Settings
   useEffect(() => {
-    fetch("/api/admin/profile")
+    fetch("/api/admin/profile", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
         if (d.email) setProfile(d);
       })
       .catch(() => {});
 
-    fetch("/api/settings")
+    fetch("/api/settings", { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
         if (d.store_name) setStoreName(d.store_name);

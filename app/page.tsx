@@ -136,7 +136,7 @@ export default function HomePage() {
             transition={{ duration: 1, delay: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
             className="font-display text-5xl sm:text-7xl md:text-9xl font-light text-candela-black tracking-wider mb-2 sm:mb-4"
           >
-            CANDELA
+            {settings.store_name || "CANDELA"}
           </motion.h1>
 
           <motion.p
@@ -145,7 +145,7 @@ export default function HomePage() {
             transition={{ duration: 0.8, delay: 0.7 }}
             className="font-script text-3xl sm:text-4xl md:text-5xl text-candela-pink-deep mb-8 sm:mb-10"
           >
-            your feminine scent
+            {settings.tagline || "your feminine scent"}
           </motion.p>
 
           <motion.div

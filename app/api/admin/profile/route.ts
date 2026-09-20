@@ -50,9 +50,32 @@ export async function PUT(request: NextRequest) {
       where: { email: cleanEmail },
     });
 
-    const adminId = (session.user as any).id;
-    if (existing && existing.id !== adminId && existing.email !== session.user?.email) {
-      return NextResponse.json({ error: "This email is already in use by another account" }, { status: 400 });
+    const adminId = (session.user as any)?.id;
+    const sessionEmail = session.user?.email?.toLowerCase();
+
+    // Find target admin record
+    let targetAdmin = await prisma.user.findFirst({
+      where: {
+        OR: [
+          ...(adminId && adminId !== "admin-master" ? [{ id: adminId }] : []),
+          ...(sessionEmail ? [{ email: sessionEmail }] : []),
+          { role: "ADMIN" },
+        ],
+      },
+    });
+
+    if (targetAdmin) {
+      // Check if email taken by another user
+      const existingOther = await prisma.user.findFirst({
+        where: {
+          email: cleanEmail,
+          NOT: { id: targetAdmin.id },
+        },
+      });
+
+      if (existingOther) {
+        return NextResponse.json({ error: "This email is already in use by another account" }, { status: 400 });
+      }
     }
 
     const updateData: any = {
@@ -69,24 +92,18 @@ export async function PUT(request: NextRequest) {
     }
 
     let updatedAdmin;
-    if (adminId) {
+    if (targetAdmin) {
       updatedAdmin = await prisma.user.update({
-        where: { id: adminId },
-        data: updateData,
-      });
-    } else if (session.user?.email) {
-      updatedAdmin = await prisma.user.update({
-        where: { email: session.user.email },
+        where: { id: targetAdmin.id },
         data: updateData,
       });
     } else {
-      const firstAdmin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
-      if (firstAdmin) {
-        updatedAdmin = await prisma.user.update({
-          where: { id: firstAdmin.id },
-          data: updateData,
-        });
-      }
+      updatedAdmin = await prisma.user.create({
+        data: {
+          ...updateData,
+          password: updateData.password || (await bcrypt.hash("candela2024", 10)),
+        },
+      });
     }
 
     return NextResponse.json({
