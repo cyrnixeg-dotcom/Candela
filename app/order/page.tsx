@@ -93,6 +93,32 @@ export default function OrderPage() {
       if (!res.ok) throw new Error("Order failed");
       const order = await res.json();
       setCreatedOrder(order);
+
+      // Save to localStorage so customer can always track even if serverless container migrates
+      try {
+        if (typeof window !== "undefined") {
+          const recent = JSON.parse(localStorage.getItem("candela_recent_orders") || "[]");
+          const updated = [
+            {
+              id: order.id,
+              orderNumber: order.orderNumber,
+              status: order.status || "PENDING",
+              total: order.total,
+              address: order.address,
+              city: order.city,
+              createdAt: order.createdAt || new Date().toISOString(),
+              customer: {
+                name: formData.customerName,
+                phone: formData.customerPhone,
+              },
+              items: order.items || [],
+            },
+            ...recent.filter((o: any) => o.orderNumber !== order.orderNumber),
+          ].slice(0, 10);
+          localStorage.setItem("candela_recent_orders", JSON.stringify(updated));
+        }
+      } catch {}
+
       clearCart();
       setStep("success");
     } catch (err) {

@@ -65,10 +65,32 @@ function TrackContent() {
       )
         .then((r) => r.json())
         .then((data) => {
-          if (data.error) setError(data.error);
-          else setOrder(data);
+          if (data.error) {
+            // Check local backup from checkout
+            try {
+              const recent = JSON.parse(localStorage.getItem("candela_recent_orders") || "[]");
+              const localMatch = recent.find((o: any) => o.orderNumber?.toUpperCase() === urlOrder.toUpperCase());
+              if (localMatch) {
+                setOrder(localMatch);
+                return;
+              }
+            } catch {}
+            setError(data.error);
+          } else {
+            setOrder(data);
+          }
         })
-        .catch(() => setError("Something went wrong. Please try again."))
+        .catch(() => {
+          try {
+            const recent = JSON.parse(localStorage.getItem("candela_recent_orders") || "[]");
+            const localMatch = recent.find((o: any) => o.orderNumber?.toUpperCase() === urlOrder.toUpperCase());
+            if (localMatch) {
+              setOrder(localMatch);
+              return;
+            }
+          } catch {}
+          setError("Something went wrong. Please try again.");
+        })
         .finally(() => setLoading(false));
     }
   }, [urlOrder, urlPhone]);
@@ -85,12 +107,29 @@ function TrackContent() {
       );
       if (!res.ok) {
         const data = await res.json();
+        // Check local backup
+        try {
+          const recent = JSON.parse(localStorage.getItem("candela_recent_orders") || "[]");
+          const localMatch = recent.find((o: any) => o.orderNumber?.toUpperCase() === orderNumber.trim().toUpperCase());
+          if (localMatch) {
+            setOrder(localMatch);
+            return;
+          }
+        } catch {}
         setError(data.error || "Order not found");
         return;
       }
       const data = await res.json();
       setOrder(data);
     } catch {
+      try {
+        const recent = JSON.parse(localStorage.getItem("candela_recent_orders") || "[]");
+        const localMatch = recent.find((o: any) => o.orderNumber?.toUpperCase() === orderNumber.trim().toUpperCase());
+        if (localMatch) {
+          setOrder(localMatch);
+          return;
+        }
+      } catch {}
       setError("Something went wrong. Please try again.");
     } finally {
       setLoading(false);

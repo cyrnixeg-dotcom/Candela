@@ -20,21 +20,10 @@ export async function GET(request: NextRequest) {
 
   try {
     await ensureDbReady();
+    // 1. Find the order by orderNumber first
     const order = await prisma.order.findFirst({
       where: {
         orderNumber: cleanOrderNumber,
-        user: {
-          OR: [
-            { phone: rawPhone },
-            { phone: digitsOnlyPhone },
-            ...(digitsOnlyPhone.startsWith("0")
-              ? [{ phone: `+20${digitsOnlyPhone.substring(1)}` }]
-              : []),
-            ...(digitsOnlyPhone.startsWith("20")
-              ? [{ phone: `0${digitsOnlyPhone.substring(2)}` }]
-              : []),
-          ],
-        },
       },
       include: {
         user: { select: { name: true, phone: true } },
@@ -48,8 +37,28 @@ export async function GET(request: NextRequest) {
 
     if (!order) {
       return NextResponse.json(
-        { error: "Order not found. Please check your order number and phone number." },
+        { error: "Order not found. Please verify your order number." },
         { status: 404 }
+      );
+    }
+
+    // 2. Validate phone number with format tolerance (matching last 8-9 digits)
+    const dbPhoneDigits = (order.user?.phone || "").replace(/\D/g, "");
+    const inputPhoneDigits = digitsOnlyPhone;
+
+    const phoneMatches =
+      !inputPhoneDigits ||
+      !dbPhoneDigits ||
+      dbPhoneDigits === inputPhoneDigits ||
+      dbPhoneDigits.endsWith(inputPhoneDigits) ||
+      inputPhoneDigits.endsWith(dbPhoneDigits) ||
+      (dbPhoneDigits.length >= 8 && inputPhoneDigits.length >= 8 &&
+        dbPhoneDigits.slice(-8) === inputPhoneDigits.slice(-8));
+
+    if (!phoneMatches) {
+      return NextResponse.json(
+        { error: "The phone number does not match this order number. Please check the phone number used at checkout." },
+        { status: 400 }
       );
     }
 
