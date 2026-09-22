@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { prisma, ensureDbReady } from "@/lib/db";
 import { generateOrderNumber } from "@/lib/utils";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { STATIC_PRODUCTS } from "@/lib/data";
+
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
   await ensureDbReady();
@@ -16,7 +20,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const status = searchParams.get("status");
   const page = parseInt(searchParams.get("page") || "1");
-  const limit = parseInt(searchParams.get("limit") || "20");
+  const limit = parseInt(searchParams.get("limit") || "50");
 
   try {
     const orders = await prisma.order.findMany({
@@ -44,7 +48,11 @@ export async function GET(request: NextRequest) {
       },
     }));
 
-    return NextResponse.json({ orders: normalisedOrders, total, page, pages: Math.ceil(total / limit) });
+    return NextResponse.json({ orders: normalisedOrders, total, page, pages: Math.ceil(total / limit) }, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+      },
+    });
   } catch (error) {
     console.error("Error fetching orders:", error);
     return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 });
@@ -195,7 +203,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Could not complete order. Please try again." }, { status: 500 });
     }
 
-    return NextResponse.json(order, { status: 201 });
+    try {
+      revalidatePath("/admin/orders");
+      revalidatePath("/api/orders");
+      revalidatePath("/admin");
+      revalidatePath("/admin/analytics");
+    } catch {}
+
+    return NextResponse.json(order, {
+      status: 201,
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+      },
+    });
   } catch (error) {
     console.error("Error creating order:", error);
     return NextResponse.json({ error: "Failed to create order" }, { status: 500 });

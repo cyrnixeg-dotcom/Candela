@@ -133,7 +133,7 @@ export default function OrderPage() {
   const stepIndex = steps.indexOf(step);
 
   if (step === "success" && createdOrder) {
-    return <OrderSuccess order={createdOrder} customerPhone={formData.customerPhone} />;
+    return <OrderSuccess order={createdOrder} customerPhone={formData.customerPhone} customerName={formData.customerName} />;
   }
 
   return (
@@ -399,7 +399,7 @@ export default function OrderPage() {
   );
 }
 
-function OrderSuccess({ order, customerPhone }: { order: CreatedOrder; customerPhone?: string }) {
+function OrderSuccess({ order, customerPhone, customerName }: { order: CreatedOrder; customerPhone?: string; customerName?: string }) {
   const settings = useSettingsStore((s) => s.settings);
   return (
     <main className="min-h-screen bg-candela-cream flex items-center justify-center">
@@ -470,7 +470,23 @@ function OrderSuccess({ order, customerPhone }: { order: CreatedOrder; customerP
           <p className="font-body text-xs text-candela-charcoal/50">
             Keep your order number to track your order status
           </p>
-          <div className="flex gap-3 justify-center">
+          <div className="flex flex-wrap gap-3 justify-center">
+            {settings.whatsapp && (
+              <a
+                href={`https://wa.me/${(settings.whatsapp || "").replace(/\D/g, "")}?text=${encodeURIComponent(`Hello CANDELA! I just placed order #${order.orderNumber} for ${order.total} EGP.\nCustomer: ${customerName || "Customer"}\nPhone: ${customerPhone || ""}`)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <motion.button
+                  whileHover={{ scale: 1.03 }}
+                  className="px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-body text-sm tracking-widest uppercase cursor-pointer flex items-center justify-center gap-2 shadow-sm"
+                  style={{ borderRadius: "12px" }}
+                >
+                  <span>💬</span>
+                  Confirm on WhatsApp
+                </motion.button>
+              </a>
+            )}
             <Link href={`/track?orderNumber=${encodeURIComponent(order.orderNumber)}${customerPhone ? `&phone=${encodeURIComponent(customerPhone)}` : ''}`}>
               <motion.button
                 whileHover={{ scale: 1.03 }}

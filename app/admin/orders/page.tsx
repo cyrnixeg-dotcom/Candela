@@ -46,9 +46,9 @@ export default function AdminOrdersPage() {
     setError(null);
     try {
       const url = filterStatus
-        ? `/api/orders?status=${filterStatus}`
-        : "/api/orders";
-      const res = await fetch(url);
+        ? `/api/orders?status=${filterStatus}&t=${Date.now()}`
+        : `/api/orders?t=${Date.now()}`;
+      const res = await fetch(url, { cache: "no-store" });
       if (!res.ok) {
         if (res.status === 401) {
           setError("Unauthorized: Please make sure you are signed in with an Administrator account.");
@@ -70,6 +70,9 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     loadOrders();
+    // Auto-refresh orders every 15 seconds so new orders appear immediately
+    const interval = setInterval(loadOrders, 15000);
+    return () => clearInterval(interval);
   }, [filterStatus]);
 
   const updateStatus = async (orderId: string, newStatus: string) => {
