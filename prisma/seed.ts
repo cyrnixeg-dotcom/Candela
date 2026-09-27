@@ -483,14 +483,14 @@ const siteSettings = [
 
 async function main() {
   console.log("🌸 Seeding CANDELA database...");
-  const hashedPassword = await bcrypt.hash("candela2024", 12);
+  const hashedPassword = await bcrypt.hash("candella@2026", 12);
   await prisma.user.upsert({
     where: { email: "admin@candela.store" },
-    update: { role: "ADMIN" },
+    update: { role: "ADMIN", password: hashedPassword },
     create: {
       email: "admin@candela.store",
       password: hashedPassword,
-      name: "Candela Owner",
+      name: "Candela Admin",
       role: "ADMIN",
     },
   });

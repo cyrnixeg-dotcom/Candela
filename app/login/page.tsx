@@ -36,20 +36,28 @@ function LoginForm() {
       const trimmedEmail = email.trim();
       const trimmedPassword = password.trim();
       const clean = trimmedEmail.toLowerCase();
-      const isAdmin = clean === "admin@candela.store" || clean === "admin";
+      const isAdmin =
+        clean === "admin@candela.store" ||
+        clean === "admin" ||
+        clean === "candela" ||
+        clean === "candela admin";
 
-      // Clean target URL without stale error query params
+      // Clean target URL: Admins go to /admin, Customers go to /account
       let target = "/account";
-      if (callbackUrl && callbackUrl !== "/account") {
-        try {
-          const u = new URL(callbackUrl, window.location.origin);
-          u.searchParams.delete("error");
-          target = u.pathname + (u.search ? u.search : "");
-        } catch {
-          target = callbackUrl.split("?")[0];
+      if (isAdmin) {
+        target = callbackUrl && callbackUrl.startsWith("/admin") ? callbackUrl : "/admin";
+      } else {
+        if (callbackUrl && !callbackUrl.startsWith("/admin") && callbackUrl !== "/account") {
+          try {
+            const u = new URL(callbackUrl, window.location.origin);
+            u.searchParams.delete("error");
+            target = u.pathname + (u.search ? u.search : "");
+          } catch {
+            target = callbackUrl.split("?")[0];
+          }
+        } else {
+          target = "/account";
         }
-      } else if (isAdmin) {
-        target = "/admin";
       }
 
       const res = await signIn("credentials", {

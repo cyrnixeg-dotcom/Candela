@@ -15,6 +15,7 @@ type Step = "contact" | "delivery" | "review" | "success";
 
 interface OrderData {
   customerName: string;
+  customerEmail: string;
   customerPhone: string;
   address: string;
   city: string;
@@ -44,6 +45,7 @@ export default function OrderPage() {
       setFormData((prev) => ({
         ...prev,
         customerName: prev.customerName || session.user?.name || "",
+        customerEmail: prev.customerEmail || session.user?.email || "",
       }));
     }
   }, [session]);
@@ -53,6 +55,7 @@ export default function OrderPage() {
   const [createdOrder, setCreatedOrder] = useState<CreatedOrder | null>(null);
   const [formData, setFormData] = useState<OrderData>({
     customerName: "",
+    customerEmail: "",
     customerPhone: "",
     address: "",
     city: "",
@@ -82,6 +85,7 @@ export default function OrderPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           customerName: formData.customerName,
+          customerEmail: formData.customerEmail?.trim().toLowerCase() || undefined,
           customerPhone: formData.customerPhone,
           address: formData.address,
           city: formData.city,
@@ -227,6 +231,21 @@ export default function OrderPage() {
                     />
                     <p className="font-body text-xs text-candela-charcoal/40 mt-2">
                       We'll use this to confirm your order
+                    </p>
+                  </div>
+                  <div>
+                    <label className="font-body text-xs text-candela-charcoal/60 tracking-widest uppercase block mb-2">
+                      Email Address (For Order Tracking & Account)
+                    </label>
+                    <input
+                      type="email"
+                      value={formData.customerEmail}
+                      onChange={update("customerEmail")}
+                      placeholder="name@example.com"
+                      className="input-candela"
+                    />
+                    <p className="font-body text-xs text-candela-charcoal/40 mt-2">
+                      Allows you to log in and track your order anytime
                     </p>
                   </div>
                   <motion.button

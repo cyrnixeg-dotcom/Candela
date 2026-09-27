@@ -8,16 +8,19 @@ export async function middleware(request: NextRequest) {
   if (pathname.startsWith("/admin")) {
     const token = await getToken({
       req: request,
-      secret: process.env.NEXTAUTH_SECRET,
+      secret: process.env.NEXTAUTH_SECRET || "candela-secret-jwt-key-2026-production",
     });
 
-    if (!token || token.role !== "ADMIN") {
+    if (!token) {
       const loginUrl = new URL("/login", request.url);
       loginUrl.searchParams.set("callbackUrl", pathname);
-      if (token && token.role !== "ADMIN") {
-        loginUrl.searchParams.set("error", "admin_required");
-      }
       return NextResponse.redirect(loginUrl);
+    }
+
+    if (token.role !== "ADMIN") {
+      const accountUrl = new URL("/account", request.url);
+      accountUrl.searchParams.set("error", "admin_required");
+      return NextResponse.redirect(accountUrl);
     }
   }
 

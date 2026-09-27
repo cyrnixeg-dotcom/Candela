@@ -68,7 +68,8 @@ export async function POST(request: NextRequest) {
     await ensureDbReady();
     const session = await getServerSession(authOptions);
     const body = await request.json();
-    const { customerName, customerPhone, address, city, notes, items } = body;
+    const { customerName, customerEmail, customerPhone, address, city, notes, items } = body;
+    const cleanEmail = customerEmail?.trim().toLowerCase() || null;
 
     if (!address || !city || !items?.length) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -88,30 +89,57 @@ export async function POST(request: NextRequest) {
             ...(customerPhone && { phone: customerPhone }),
             ...(customerName?.trim() && { name: customerName.trim() }),
           },
-        });
+        }).catch(() => {});
       }
     }
 
-    // 2. If guest or admin testing: find or create a user with role USER (never admin)
-    if (!dbUser) {
-      if (customerPhone) {
-        dbUser = await prisma.user.findFirst({
-          where: { phone: customerPhone, role: "USER" },
-        });
-      }
-      if (!dbUser) {
-        dbUser = await prisma.user.create({
+    // 2. If guest or admin testing: check if customer account exists by email
+    if (!dbUser && cleanEmail && cleanEmail !== "admin@candela.store") {
+      dbUser = await prisma.user.findUnique({
+        where: { email: cleanEmail },
+      });
+      if (dbUser) {
+        await prisma.user.update({
+          where: { id: dbUser.id },
           data: {
-            name: customerName?.trim() || "Customer",
-            phone: customerPhone || null,
-            role: "USER",
+            ...(customerPhone && { phone: customerPhone }),
+            ...(customerName?.trim() && { name: customerName.trim() }),
           },
-        });
-      } else if (customerName?.trim() && dbUser.name !== customerName.trim()) {
-        dbUser = await prisma.user.update({
+        }).catch(() => {});
+      }
+    }
+
+    // 3. Check by phone if still not resolved
+    if (!dbUser && customerPhone) {
+      dbUser = await prisma.user.findFirst({
+        where: { phone: customerPhone, role: "USER" },
+      });
+    }
+
+    // 4. Create new customer user with role USER if not found
+    if (!dbUser) {
+      dbUser = await prisma.user.create({
+        data: {
+          name: customerName?.trim() || "Customer",
+          email: cleanEmail !== "admin@candela.store" ? cleanEmail : null,
+          phone: customerPhone || null,
+          role: "USER",
+        },
+      });
+    } else {
+      if (!dbUser.email && cleanEmail && cleanEmail !== "admin@candela.store") {
+        try {
+          dbUser = await prisma.user.update({
+            where: { id: dbUser.id },
+            data: { email: cleanEmail },
+          });
+        } catch {}
+      }
+      if (customerName?.trim() && dbUser.name !== customerName.trim()) {
+        await prisma.user.update({
           where: { id: dbUser.id },
           data: { name: customerName.trim() },
-        });
+        }).catch(() => {});
       }
     }
 

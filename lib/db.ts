@@ -8,15 +8,31 @@ const globalForPrisma = globalThis as unknown as {
   dbReadyPromise: Promise<void> | undefined;
 };
 
+function setCandelaSchema(url: string): string {
+  if (!url || typeof url !== "string") return url;
+  if (!url.startsWith("postgres://") && !url.startsWith("postgresql://")) return url;
+  try {
+    const parsed = new URL(url);
+    parsed.searchParams.set("schema", "candela");
+    return parsed.toString();
+  } catch {
+    if (url.includes("schema=")) {
+      return url.replace(/schema=[^&]+/, "schema=candela");
+    }
+    const sep = url.includes("?") ? "&" : "?";
+    return `${url}${sep}schema=candela`;
+  }
+}
+
 function getDbUrl(): string {
-  // If remote PostgreSQL (Neon/Vercel Postgres) is provided, use it directly
+  // If remote PostgreSQL (Neon/Vercel Postgres) is provided, use it directly with candela schema
   if (process.env.POSTGRES_PRISMA_URL) {
-    return process.env.POSTGRES_PRISMA_URL;
+    return setCandelaSchema(process.env.POSTGRES_PRISMA_URL);
   }
 
-  // If remote external URL is provided, use it directly
+  // If remote external URL is provided, use it directly with candela schema
   if (process.env.DATABASE_URL && !process.env.DATABASE_URL.startsWith("file:")) {
-    return process.env.DATABASE_URL;
+    return setCandelaSchema(process.env.DATABASE_URL);
   }
 
   // If on Vercel / serverless (where root filesystem is read-only)
@@ -236,11 +252,22 @@ export async function ensureDbReady(): Promise<void> {
         await prisma.user.update({
           where: { id: existingAdmin.id },
           data: {
+            email: adminEmail,
+            name: existingAdmin.name || "Candela Admin",
             password: adminPassHash,
             role: "ADMIN",
           },
         }).catch(() => {});
       }
+
+      // Ensure all other user accounts are strictly USER, never ADMIN
+      await prisma.user.updateMany({
+        where: {
+          email: { not: adminEmail },
+          role: "ADMIN",
+        },
+        data: { role: "USER" },
+      }).catch(() => {});
 
       // Ensure products seeded only once on fresh setup
       const isCatalogInit = await prisma.siteSetting.findUnique({
