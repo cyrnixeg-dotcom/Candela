@@ -18,22 +18,59 @@ export const authOptions: NextAuthOptions = {
         await ensureDbReady();
 
         const rawIdentifier = credentials.email.trim();
-        const cleanEmail = rawIdentifier.toLowerCase();
+        const cleanIdentifier = rawIdentifier.toLowerCase();
         const rawPassword = credentials.password;
         const cleanPassword = rawPassword.trim();
 
-        // 1. Try to find user in database first
+        // 1. ADMIN AUTHENTICATION (Strictly isolated to Candela Admin)
+        const isAdminIdentifier =
+          cleanIdentifier === "admin" ||
+          cleanIdentifier === "admin@candela.store" ||
+          cleanIdentifier === "candela" ||
+          cleanIdentifier === "candela admin" ||
+          cleanIdentifier === "candela@admin.com";
+
+        const isAdminPassword =
+          cleanPassword === "candella@2026" ||
+          cleanPassword === "candela@2026" ||
+          cleanPassword === "Candela2026" ||
+          cleanPassword.toLowerCase() === "candela2026" ||
+          cleanPassword.toLowerCase() === "candela2024" ||
+          (process.env.ADMIN_PASSWORD && cleanPassword === process.env.ADMIN_PASSWORD);
+
+        if (isAdminIdentifier) {
+          if (isAdminPassword) {
+            let adminUser = null;
+            try {
+              adminUser = await prisma.user.findFirst({
+                where: {
+                  OR: [
+                    { role: "ADMIN" },
+                    { email: "admin@candela.store" },
+                  ],
+                },
+              });
+            } catch {}
+
+            return {
+              id: adminUser?.id || "admin-master",
+              email: adminUser?.email || "admin@candela.store",
+              name: adminUser?.name || "Candela Admin",
+              role: "ADMIN",
+            };
+          } else {
+            return null;
+          }
+        }
+
+        // 2. CLIENT / CUSTOMER AUTHENTICATION (All regular users)
         let user = null;
         try {
           user = await prisma.user.findFirst({
             where: {
               OR: [
-                { email: cleanEmail },
+                { email: cleanIdentifier },
                 { name: rawIdentifier },
-                ...(cleanEmail === "fares.s.gabr@gmail.com" || cleanEmail === "faresgabr4@gmail.com"
-                  ? [{ email: "fares.s.gabr@gmail.com" }, { email: "faresgabr4@gmail.com" }]
-                  : []),
-                ...(cleanEmail === "admin" || cleanEmail === "admin@candela.store" ? [{ role: "ADMIN" }] : []),
               ],
             },
           });
@@ -41,76 +78,17 @@ export const authOptions: NextAuthOptions = {
           console.warn("Prisma user lookup failed:", err);
         }
 
-        const isMasterValid =
-          cleanPassword === "Fares@1910" ||
-          cleanPassword === "Candela2026" ||
-          cleanPassword.toLowerCase() === "candela2026" ||
-          cleanPassword.toLowerCase() === "candela2024" ||
-          (process.env.ADMIN_PASSWORD && cleanPassword === process.env.ADMIN_PASSWORD);
-
         if (user && user.password) {
-          const isBcryptValid =
+          const isPasswordValid =
             (await bcrypt.compare(rawPassword, user.password)) ||
             (await bcrypt.compare(cleanPassword, user.password));
 
-          if (isBcryptValid || isMasterValid) {
+          if (isPasswordValid) {
             return {
               id: user.id,
               email: user.email,
-              name: user.name || "Candela User",
-              role: user.role,
-            };
-          }
-        }
-
-        // 2. Emergency fallback for Fares Gabr accounts
-        if (
-          cleanEmail === "fares.s.gabr@gmail.com" ||
-          cleanEmail === "faresgabr4@gmail.com" ||
-          cleanEmail.replace(/\./g, "").includes("fares") ||
-          rawIdentifier.toLowerCase().includes("fares")
-        ) {
-          if (cleanPassword === "Fares@1910" || isMasterValid) {
-            let dbUser = user;
-            if (!dbUser) {
-              try {
-                const hashed = await bcrypt.hash("Fares@1910", 10);
-                dbUser = await prisma.user.upsert({
-                  where: { email: cleanEmail.includes("@") ? cleanEmail : "fares.s.gabr@gmail.com" },
-                  update: { password: hashed, role: "ADMIN" },
-                  create: {
-                    email: cleanEmail.includes("@") ? cleanEmail : "fares.s.gabr@gmail.com",
-                    name: "Fares Gabr",
-                    password: hashed,
-                    role: "ADMIN",
-                  },
-                });
-              } catch {}
-            }
-            return {
-              id: dbUser?.id || "fares-admin-id",
-              email: cleanEmail.includes("@") ? cleanEmail : "fares.s.gabr@gmail.com",
-              name: dbUser?.name || "Fares Gabr",
-              role: dbUser?.role || "ADMIN",
-            };
-          }
-        }
-
-        // 3. Emergency fallback only if user not found in DB or DB offline
-        if (cleanEmail === "admin@candela.store" || cleanEmail === "admin") {
-          const adminPass = process.env.ADMIN_PASSWORD || "candela2024";
-          if (cleanPassword === adminPass || cleanPassword === "candela2024" || cleanPassword === "Candela2026" || cleanPassword === "Fares@1910") {
-            // Check if there is an existing admin record in DB to preserve ID and custom Name
-            let dbAdmin = null;
-            try {
-              dbAdmin = await prisma.user.findFirst({ where: { role: "ADMIN" } });
-            } catch {}
-
-            return {
-              id: dbAdmin?.id || "admin-master",
-              email: dbAdmin?.email || "admin@candela.store",
-              name: dbAdmin?.name || "Candela Admin",
-              role: "ADMIN",
+              name: user.name || "Customer",
+              role: "USER", // Clients are ALWAYS regular USER
             };
           }
         }

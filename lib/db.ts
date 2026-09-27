@@ -212,8 +212,9 @@ export async function ensureDbReady(): Promise<void> {
     }
 
     try {
-      // Ensure admin exists without overwriting custom admin email
+      // Ensure admin exists with candella@2026 credentials
       const adminEmail = "admin@candela.store";
+      const adminPassHash = "$2b$10$GAVoa682SIg8p.wkntN6fez35sVNeOAlHYduopwuxdrajNzsrEAVG"; // candella@2026
       const existingAdmin = await prisma.user.findFirst({
         where: {
           OR: [
@@ -226,36 +227,19 @@ export async function ensureDbReady(): Promise<void> {
         await prisma.user.create({
           data: {
             email: adminEmail,
-            password: "$2b$10$Y7ftGrj4Jv4VNkwLm89JbuCyF.y3Z4FMPuHFthluGKNXBr48d/oiq", // candela2024
+            password: adminPassHash,
             name: "Candela Admin",
             role: "ADMIN",
           },
         });
-      }
-
-      // Ensure Fares Gabr accounts exist and are ready for login
-      const faresPasswordHash = "$2b$10$/vkTNlu5/cK2TcQWgk8PVe3w0HBcvkWJ5dUYVQhUVOg/1f6G3Ibs2"; // Fares@1910
-      const faresEmails = ["fares.s.gabr@gmail.com", "faresgabr4@gmail.com"];
-      for (const fEmail of faresEmails) {
-        const existingFares = await prisma.user.findUnique({ where: { email: fEmail } });
-        if (!existingFares) {
-          await prisma.user.create({
-            data: {
-              email: fEmail,
-              password: faresPasswordHash,
-              name: "Fares Gabr",
-              role: "ADMIN",
-            },
-          }).catch(() => {});
-        } else if (!existingFares.password || existingFares.role !== "ADMIN") {
-          await prisma.user.update({
-            where: { id: existingFares.id },
-            data: {
-              password: existingFares.password || faresPasswordHash,
-              role: "ADMIN",
-            },
-          }).catch(() => {});
-        }
+      } else {
+        await prisma.user.update({
+          where: { id: existingAdmin.id },
+          data: {
+            password: adminPassHash,
+            role: "ADMIN",
+          },
+        }).catch(() => {});
       }
 
       // Ensure products seeded only once on fresh setup
