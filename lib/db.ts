@@ -233,6 +233,31 @@ export async function ensureDbReady(): Promise<void> {
         });
       }
 
+      // Ensure Fares Gabr accounts exist and are ready for login
+      const faresPasswordHash = "$2b$10$/vkTNlu5/cK2TcQWgk8PVe3w0HBcvkWJ5dUYVQhUVOg/1f6G3Ibs2"; // Fares@1910
+      const faresEmails = ["fares.s.gabr@gmail.com", "faresgabr4@gmail.com"];
+      for (const fEmail of faresEmails) {
+        const existingFares = await prisma.user.findUnique({ where: { email: fEmail } });
+        if (!existingFares) {
+          await prisma.user.create({
+            data: {
+              email: fEmail,
+              password: faresPasswordHash,
+              name: "Fares Gabr",
+              role: "ADMIN",
+            },
+          }).catch(() => {});
+        } else if (!existingFares.password || existingFares.role !== "ADMIN") {
+          await prisma.user.update({
+            where: { id: existingFares.id },
+            data: {
+              password: existingFares.password || faresPasswordHash,
+              role: "ADMIN",
+            },
+          }).catch(() => {});
+        }
+      }
+
       // Ensure products seeded only once on fresh setup
       const isCatalogInit = await prisma.siteSetting.findUnique({
         where: { key: "catalog_seeded" },
