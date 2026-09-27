@@ -45,7 +45,7 @@ export default function AdminDashboard() {
   const loadData = () => {
     setLoading(true);
     setError(null);
-    fetch("/api/analytics")
+    fetch(`/api/analytics?t=${Date.now()}`, { cache: "no-store" })
       .then((r) => {
         if (!r.ok) throw new Error("Failed to fetch analytics");
         return r.json();
@@ -57,6 +57,13 @@ export default function AdminDashboard() {
 
   useEffect(() => {
     loadData();
+    const handleNewOrder = () => loadData();
+    window.addEventListener("candela:new-order", handleNewOrder);
+    const interval = setInterval(loadData, 20000);
+    return () => {
+      window.removeEventListener("candela:new-order", handleNewOrder);
+      clearInterval(interval);
+    };
   }, []);
 
   const stats = data?.stats;

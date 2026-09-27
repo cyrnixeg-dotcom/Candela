@@ -111,8 +111,9 @@ export async function POST(request: NextRequest) {
     });
 
     try {
-      revalidatePath("/");
+      revalidatePath("/", "layout");
       revalidatePath("/shop");
+      revalidatePath("/admin/products");
       revalidatePath("/api/products");
     } catch {}
 

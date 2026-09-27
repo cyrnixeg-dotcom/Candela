@@ -23,22 +23,26 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get("limit") || "50");
 
   try {
-    const orders = await prisma.order.findMany({
-      where: status ? { status } : {},
-      include: {
-        user: true,
-        items: {
-          include: { product: true },
+    const [orders, total, pendingCount] = await Promise.all([
+      prisma.order.findMany({
+        where: status ? { status } : {},
+        include: {
+          user: true,
+          items: {
+            include: { product: true },
+          },
         },
-      },
-      orderBy: { createdAt: "desc" },
-      skip: (page - 1) * limit,
-      take: limit,
-    });
-
-    const total = await prisma.order.count({
-      where: status ? { status } : {},
-    });
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.order.count({
+        where: status ? { status } : {},
+      }),
+      prisma.order.count({
+        where: { status: "PENDING" },
+      }),
+    ]);
 
     const normalisedOrders = orders.map((o) => ({
       ...o,
@@ -48,7 +52,7 @@ export async function GET(request: NextRequest) {
       },
     }));
 
-    return NextResponse.json({ orders: normalisedOrders, total, page, pages: Math.ceil(total / limit) }, {
+    return NextResponse.json({ orders: normalisedOrders, total, pendingCount, page, pages: Math.ceil(total / limit) }, {
       headers: {
         "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
       },

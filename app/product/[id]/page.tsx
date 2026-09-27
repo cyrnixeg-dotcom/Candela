@@ -32,7 +32,7 @@ export default function ProductPage() {
 
   useEffect(() => {
     if (!id) return;
-    fetch(`/api/products/${id}`)
+    fetch(`/api/products/${id}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         setProduct(data);

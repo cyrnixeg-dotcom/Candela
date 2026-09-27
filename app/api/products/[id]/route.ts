@@ -126,8 +126,9 @@ export async function PUT(
     });
 
     try {
-      revalidatePath("/");
+      revalidatePath("/", "layout");
       revalidatePath("/shop");
+      revalidatePath("/admin/products");
       revalidatePath("/api/products");
       revalidatePath(`/product/${product.id}`);
       revalidatePath(`/product/${product.slug}`);
@@ -179,8 +180,9 @@ export async function DELETE(
     await prisma.product.delete({ where: { id: existing.id } });
 
     try {
-      revalidatePath("/");
+      revalidatePath("/", "layout");
       revalidatePath("/shop");
+      revalidatePath("/admin/products");
       revalidatePath("/api/products");
       revalidatePath(`/product/${existing.id}`);
       revalidatePath(`/product/${existing.slug}`);

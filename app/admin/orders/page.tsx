@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { getStatusColor, getStatusLabel, formatDate } from "@/lib/utils";
 import Image from "next/image";
+import { playNotificationSound } from "@/lib/audio";
 
 const ORDER_STATUSES = [
   "PENDING",
@@ -40,6 +41,30 @@ export default function AdminOrdersPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [alertsActive, setAlertsActive] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && "Notification" in window) {
+      setAlertsActive(Notification.permission === "granted");
+    }
+  }, []);
+
+  const handleTestAlert = async () => {
+    playNotificationSound("order-alert");
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      try {
+        navigator.vibrate([250, 100, 250]);
+      } catch {}
+    }
+    if (typeof window !== "undefined" && "Notification" in window) {
+      try {
+        const perm = await Notification.requestPermission();
+        if (perm === "granted") {
+          setAlertsActive(true);
+        }
+      } catch {}
+    }
+  };
 
   const loadOrders = async () => {
     setLoading(true);
@@ -70,9 +95,14 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     loadOrders();
-    // Auto-refresh orders every 15 seconds so new orders appear immediately
-    const interval = setInterval(loadOrders, 15000);
-    return () => clearInterval(interval);
+    const handleNewOrder = () => loadOrders();
+    window.addEventListener("candela:new-order", handleNewOrder);
+    // Auto-refresh orders every 8 seconds so new orders appear immediately
+    const interval = setInterval(loadOrders, 8000);
+    return () => {
+      window.removeEventListener("candela:new-order", handleNewOrder);
+      clearInterval(interval);
+    };
   }, [filterStatus]);
 
   const updateStatus = async (orderId: string, newStatus: string) => {
@@ -119,14 +149,28 @@ export default function AdminOrdersPage() {
           </p>
         </div>
 
-        <button
-          onClick={loadOrders}
-          disabled={loading}
-          className="self-start sm:self-auto px-4 py-2 bg-white/5 hover:bg-white/10 text-white/80 rounded-xl text-xs font-body font-medium flex items-center gap-2 transition-colors cursor-pointer border border-white/10 disabled:opacity-50"
-        >
-          <span className={loading ? "animate-spin" : ""}>🔄</span>
-          Refresh Orders
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={handleTestAlert}
+            className={`px-3 py-2 rounded-xl text-xs font-body font-medium flex items-center gap-2 transition-all cursor-pointer border ${
+              alertsActive
+                ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400 hover:bg-emerald-500/20"
+                : "bg-amber-500/15 border-amber-500/30 text-amber-300 hover:bg-amber-500/25 animate-pulse"
+            }`}
+            title="Tap to test phone sound chime and vibration for new orders"
+          >
+            <span>{alertsActive ? "🔔 Phone Alerts: Active (Test)" : "🔕 Enable Phone Alerts"}</span>
+          </button>
+
+          <button
+            onClick={loadOrders}
+            disabled={loading}
+            className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white/80 rounded-xl text-xs font-body font-medium flex items-center gap-2 transition-colors cursor-pointer border border-white/10 disabled:opacity-50"
+          >
+            <span className={loading ? "animate-spin" : ""}>🔄</span>
+            Refresh Orders
+          </button>
+        </div>
       </div>
 
       {error && (
@@ -288,15 +332,31 @@ export default function AdminOrdersPage() {
                   </div>
                 </div>
 
-                {/* Call customer button */}
-                <a href={`tel:${selectedOrder.customer.phone}`}>
-                  <button
-                    className="w-full py-3 text-sm font-medium tracking-widest uppercase transition-colors"
-                    style={{ background: "rgba(244,167,185,0.12)", color: "#F4A7B9", borderRadius: "12px", fontFamily: "'Jost', sans-serif", border: "1px solid rgba(244,167,185,0.2)" }}
-                  >
-                    📞 Call Customer
-                  </button>
-                </a>
+                {/* Call & WhatsApp customer buttons */}
+                <div className="space-y-2 pt-2">
+                  <a href={`tel:${selectedOrder.customer.phone}`} className="block">
+                    <button
+                      className="w-full py-2.5 text-xs font-medium tracking-widest uppercase transition-colors cursor-pointer"
+                      style={{ background: "rgba(244,167,185,0.12)", color: "#F4A7B9", borderRadius: "12px", fontFamily: "'Jost', sans-serif", border: "1px solid rgba(244,167,185,0.2)" }}
+                    >
+                      📞 Call Customer
+                    </button>
+                  </a>
+                  {selectedOrder.customer.phone && selectedOrder.customer.phone !== "—" && (
+                    <a
+                      href={`https://wa.me/${selectedOrder.customer.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hello ${selectedOrder.customer.name}, this is Candela regarding your order #${selectedOrder.orderNumber}.`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block"
+                    >
+                      <button
+                        className="w-full py-2.5 text-xs font-medium tracking-widest uppercase transition-colors cursor-pointer bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/30 rounded-xl font-body"
+                      >
+                        💬 WhatsApp Customer
+                      </button>
+                    </a>
+                  )}
+                </div>
               </div>
             </motion.div>
           )}

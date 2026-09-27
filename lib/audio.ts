@@ -1,7 +1,7 @@
 // Web Audio API sound synthesizer for real-time notifications
 // Zero external assets required — 100% reliable across all browsers & devices
 
-export function playNotificationSound(type: "message" | "admin-alert" | "end" = "message") {
+export function playNotificationSound(type: "message" | "admin-alert" | "order-alert" | "end" = "message") {
   try {
     const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioCtx) return;
@@ -11,7 +11,36 @@ export function playNotificationSound(type: "message" | "admin-alert" | "end" = 
       ctx.resume().catch(() => {});
     }
 
-    if (type === "admin-alert") {
+    if (type === "order-alert") {
+      // Joyful celebratory chime for new store orders (ascending arpeggio C5 -> E5 -> G5 -> C6 with chime overtone)
+      const now = ctx.currentTime;
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc1.type = "sine";
+      osc1.frequency.setValueAtTime(523.25, now); // C5
+      osc1.frequency.setValueAtTime(659.25, now + 0.1); // E5
+      osc1.frequency.setValueAtTime(783.99, now + 0.2); // G5
+      osc1.frequency.setValueAtTime(1046.5, now + 0.3); // C6
+      osc1.frequency.setValueAtTime(1318.51, now + 0.45); // E6
+
+      osc2.type = "triangle";
+      osc2.frequency.setValueAtTime(261.63, now); // C4
+      osc2.frequency.setValueAtTime(523.25, now + 0.3); // C5
+
+      gain.gain.setValueAtTime(0.28, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start(now);
+      osc2.start(now);
+      osc1.stop(now + 0.9);
+      osc2.stop(now + 0.9);
+    } else if (type === "admin-alert") {
       // Urgent, pleasant two-tone ring for incoming customer chat
       const now = ctx.currentTime;
       const osc1 = ctx.createOscillator();

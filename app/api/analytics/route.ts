@@ -4,6 +4,9 @@ import { getDeviceType } from "@/lib/utils";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function GET() {
   await ensureDbReady();
   const session = await getServerSession(authOptions);
@@ -85,6 +88,10 @@ export async function GET() {
       recentOrders: normalisedOrders,
       topProducts: topProducts || [],
       recentEvents: recentEvents || [],
+    }, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+      },
     });
   } catch (error) {
     console.error("Analytics error:", error);
@@ -104,6 +111,10 @@ export async function GET() {
       recentOrders: [],
       topProducts: [],
       recentEvents: [],
+    }, {
+      headers: {
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+      },
     });
   }
 }
