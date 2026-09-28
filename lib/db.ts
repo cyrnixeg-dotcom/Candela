@@ -24,55 +24,27 @@ function setCandelaSchema(url: string): string {
   }
 }
 
+const DEFAULT_NEON_POSTGRES_URL =
+  "postgresql://neondb_owner:npg_LDKW6PZpaw3U@ep-solitary-tooth-avbzpmn7-pooler.c-11.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require&schema=candela";
+
 function getDbUrl(): string {
-  // If remote PostgreSQL (Neon/Vercel Postgres) is provided, use it directly with candela schema
+  // 1. Production pooled connection from Vercel / Neon
   if (process.env.POSTGRES_PRISMA_URL) {
     return setCandelaSchema(process.env.POSTGRES_PRISMA_URL);
   }
 
-  // If remote external URL is provided, use it directly with candela schema
+  // 2. Standard DATABASE_URL
   if (process.env.DATABASE_URL && !process.env.DATABASE_URL.startsWith("file:")) {
     return setCandelaSchema(process.env.DATABASE_URL);
   }
 
-  // If on Vercel / serverless (where root filesystem is read-only)
-  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
-    const tmpDbPath = path.join("/tmp", "candela-dev.db");
-    try {
-      if (!fs.existsSync(tmpDbPath)) {
-        const candidates = [
-          path.join(process.cwd(), "public", "dev.db"),
-          path.join(process.cwd(), "prisma", "dev.db"),
-          path.join("/var/task", "public", "dev.db"),
-          path.join("/var/task", "prisma", "dev.db"),
-          path.join(__dirname, "..", "public", "dev.db"),
-          path.join(__dirname, "..", "prisma", "dev.db"),
-        ];
-
-        let copied = false;
-        for (const candidate of candidates) {
-          try {
-            if (fs.existsSync(/*turbopackIgnore: true*/ candidate) && fs.statSync(/*turbopackIgnore: true*/ candidate).size > 0) {
-              fs.copyFileSync(candidate, tmpDbPath);
-              console.log(`Successfully copied seed database from ${candidate} to ${tmpDbPath}`);
-              copied = true;
-              break;
-            }
-          } catch {}
-        }
-        if (!copied) {
-          console.warn("No existing seed SQLite database found. Will auto-create schema via DDL.");
-        }
-      }
-      return `file:${tmpDbPath}`;
-    } catch (err) {
-      console.warn("Could not setup SQLite in /tmp:", err);
-    }
+  // 3. Fallback POSTGRES_URL
+  if (process.env.POSTGRES_URL && !process.env.POSTGRES_URL.startsWith("file:")) {
+    return setCandelaSchema(process.env.POSTGRES_URL);
   }
 
-  // Local development fallback with absolute path
-  const localDb = path.resolve(process.cwd(), "prisma", "dev.db");
-  return `file:${localDb}`;
+  // 4. Guaranteed persistent Neon PostgreSQL Candela database
+  return DEFAULT_NEON_POSTGRES_URL;
 }
 
 const resolvedUrl = getDbUrl();
@@ -87,6 +59,9 @@ export const prisma =
     },
     log: process.env.NODE_ENV === "development" ? ["warn", "error"] : ["error"],
   });
+
+// Always retain prisma client as singleton across requests
+globalForPrisma.prisma = prisma;
 
 // Always retain prisma client as singleton across requests
 globalForPrisma.prisma = prisma;

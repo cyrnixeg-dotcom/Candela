@@ -40,38 +40,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(products, {
       headers: {
         "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0",
+        "Pragma": "no-cache",
+        "Expires": "0",
       },
     });
   } catch (error) {
-    console.warn("Database fetch products failed, falling back to static catalog:", error);
+    console.error("Database fetch products failed:", error);
+    return NextResponse.json({ error: "Failed to load products from database" }, { status: 500 });
   }
-
-  // Resilient fallback only if database connection failed
-  let results = [...STATIC_PRODUCTS];
-  if (category && category !== "all") {
-    results = results.filter((p) => p.category === category);
-  }
-  if (subcategory) {
-    results = results.filter((p) => p.subcategory === subcategory);
-  }
-  if (featured === "true") {
-    results = results.filter((p) => p.isFeatured);
-  }
-  if (search) {
-    const q = search.toLowerCase();
-    results = results.filter(
-      (p) =>
-        p.name.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q) ||
-        p.subcategory.toLowerCase().includes(q)
-    );
-  }
-
-  return NextResponse.json(results, {
-    headers: {
-      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
-    },
-  });
 }
 
 export async function POST(request: NextRequest) {

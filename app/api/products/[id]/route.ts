@@ -35,27 +35,17 @@ export async function GET(
       return NextResponse.json(product, {
         headers: {
           "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0",
+          "Pragma": "no-cache",
+          "Expires": "0",
         },
       });
     }
 
-    // Product was checked in DB and not found -> return 404
     return NextResponse.json({ error: "Product not found" }, { status: 404 });
   } catch (error) {
-    console.warn("Database fetch product by id failed, checking static fallback:", error);
+    console.error("Database fetch product by id failed:", error);
+    return NextResponse.json({ error: "Product not found" }, { status: 404 });
   }
-
-  // Fallback to static product catalog only if database connection failed
-  const fallback = STATIC_PRODUCTS.find((p) => p.id === id || p.slug === id);
-  if (fallback) {
-    return NextResponse.json(fallback, {
-      headers: {
-        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
-      },
-    });
-  }
-
-  return NextResponse.json({ error: "Product not found" }, { status: 404 });
 }
 
 export async function PUT(
