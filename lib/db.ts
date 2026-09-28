@@ -200,6 +200,40 @@ const SCHEMA_DDL_STATEMENTS = [
   `CREATE UNIQUE INDEX IF NOT EXISTS "SiteSetting_key_key" ON "SiteSetting"("key")`,
 ];
 
+export async function withDbRetry<T>(
+  operation: () => Promise<T>,
+  maxRetries: number = 3,
+  delayMs: number = 600
+): Promise<T> {
+  let lastError: any;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await operation();
+    } catch (err: any) {
+      lastError = err;
+      const msg = err?.message || "";
+      const isTransient =
+        msg.includes("Connection") ||
+        msg.includes("connect") ||
+        msg.includes("timeout") ||
+        msg.includes("closed") ||
+        msg.includes("terminated") ||
+        msg.includes("Can't reach database") ||
+        err?.code === "P1001" ||
+        err?.code === "P1002" ||
+        err?.code === "P1017";
+
+      if (attempt < maxRetries && isTransient) {
+        console.warn(`[Neon DB Retry] Attempt ${attempt} failed with transient error: ${msg}. Retrying in ${delayMs * attempt}ms...`);
+        await new Promise((res) => setTimeout(res, delayMs * attempt));
+      } else {
+        break;
+      }
+    }
+  }
+  throw lastError;
+}
+
 export async function ensureDbReady(): Promise<void> {
   if (globalForPrisma.dbReadyPromise) {
     return globalForPrisma.dbReadyPromise;
@@ -213,7 +247,7 @@ export async function ensureDbReady(): Promise<void> {
 
     try {
       // Test if table User exists using pure Prisma ORM
-      await prisma.user.findFirst({ select: { id: true } });
+      await withDbRetry(() => prisma.user.findFirst({ select: { id: true } }));
     } catch {
       if (!isPostgres) {
         console.log("⚡ Auto-initializing SQLite database schema...");
@@ -228,7 +262,7 @@ export async function ensureDbReady(): Promise<void> {
     }
 
     try {
-      // Ensure admin exists with candella@2026 credentials
+      // Ensure at least one admin account exists without overwriting custom passwords/names
       const adminEmail = "admin@candela.store";
       const adminPassHash = "$2b$10$GAVoa682SIg8p.wkntN6fez35sVNeOAlHYduopwuxdrajNzsrEAVG"; // candella@2026
       const existingAdmin = await prisma.user.findFirst({
@@ -239,6 +273,7 @@ export async function ensureDbReady(): Promise<void> {
           ],
         },
       });
+
       if (!existingAdmin) {
         await prisma.user.create({
           data: {
@@ -248,26 +283,23 @@ export async function ensureDbReady(): Promise<void> {
             role: "ADMIN",
           },
         });
-      } else {
+      } else if (existingAdmin.role !== "ADMIN") {
         await prisma.user.update({
           where: { id: existingAdmin.id },
-          data: {
-            email: adminEmail,
-            name: existingAdmin.name || "Candela Admin",
-            password: adminPassHash,
-            role: "ADMIN",
-          },
+          data: { role: "ADMIN" },
         }).catch(() => {});
       }
 
-      // Ensure all other user accounts are strictly USER, never ADMIN
-      await prisma.user.updateMany({
-        where: {
-          email: { not: adminEmail },
-          role: "ADMIN",
-        },
-        data: { role: "USER" },
-      }).catch(() => {});
+      // Ensure all regular users remain USER
+      if (existingAdmin) {
+        await prisma.user.updateMany({
+          where: {
+            id: { not: existingAdmin.id },
+            role: "ADMIN",
+          },
+          data: { role: "USER" },
+        }).catch(() => {});
+      }
 
       // Ensure products seeded only once on fresh setup
       const isCatalogInit = await prisma.siteSetting.findUnique({

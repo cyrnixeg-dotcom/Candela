@@ -54,7 +54,7 @@ export default function AdminProductsPage() {
   const [imageUploading, setImageUploading] = useState(false);
 
   const load = () => {
-    fetch("/api/products", { cache: "no-store" })
+    fetch(`/api/products?t=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -151,6 +151,11 @@ export default function AdminProductsPage() {
         setProducts((prev) => [savedProduct, ...prev]);
       }
 
+      if (typeof window !== "undefined") {
+        localStorage.setItem("candela-products-synced", Date.now().toString());
+        window.dispatchEvent(new CustomEvent("candela:products-updated", { detail: savedProduct }));
+      }
+
       setShowForm(false);
     } catch (err: any) {
       console.error("Save error:", err);
@@ -172,6 +177,11 @@ export default function AdminProductsPage() {
         alert(`Failed to delete product: ${err.error || res.statusText}`);
         load(); // Revert on error
         return;
+      }
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("candela-products-synced", Date.now().toString());
+        window.dispatchEvent(new CustomEvent("candela:products-updated", { detail: { id, deleted: true } }));
       }
     } catch (err: any) {
       console.error("Delete error:", err);
@@ -195,6 +205,11 @@ export default function AdminProductsPage() {
       setProducts((prev) =>
         prev.map((p) => (p.id === id ? { ...p, [field]: value } : p))
       );
+
+      if (typeof window !== "undefined") {
+        localStorage.setItem("candela-products-synced", Date.now().toString());
+        window.dispatchEvent(new CustomEvent("candela:products-updated", { detail: { id, field, value } }));
+      }
     } catch (err) {
       console.error("Toggle error:", err);
     }
@@ -353,11 +368,19 @@ export default function AdminProductsPage() {
 
                 <div>
                   <label className="admin-label">Subcategory</label>
-                  <select value={formData.subcategory} onChange={update("subcategory")} className="admin-select">
+                  <input
+                    type="text"
+                    list="subcategories-datalist"
+                    value={formData.subcategory}
+                    onChange={update("subcategory")}
+                    className="admin-input"
+                    placeholder="Select or type a subcategory..."
+                  />
+                  <datalist id="subcategories-datalist">
                     {(SUBCATEGORIES[formData.category] || []).map((s) => (
-                      <option key={s} value={s}>{s}</option>
+                      <option key={s} value={s} />
                     ))}
-                  </select>
+                  </datalist>
                 </div>
 
                 <div>

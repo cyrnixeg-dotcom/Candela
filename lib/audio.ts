@@ -1,12 +1,30 @@
-// Web Audio API sound synthesizer for real-time notifications
-// Zero external assets required — 100% reliable across all browsers & devices
+let sharedAudioCtx: AudioContext | null = null;
+
+export function getAudioContext(): AudioContext | null {
+  if (typeof window === "undefined") return null;
+  const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+  if (!AudioCtx) return null;
+  if (!sharedAudioCtx) {
+    sharedAudioCtx = new AudioCtx();
+  }
+  if (sharedAudioCtx.state === "suspended") {
+    sharedAudioCtx.resume().catch(() => {});
+  }
+  return sharedAudioCtx;
+}
+
+export function unlockAudioContext() {
+  const ctx = getAudioContext();
+  if (ctx && ctx.state === "suspended") {
+    ctx.resume().catch(() => {});
+  }
+}
 
 export function playNotificationSound(type: "message" | "admin-alert" | "order-alert" | "end" = "message") {
   try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
+    const ctx = getAudioContext();
+    if (!ctx) return;
 
-    const ctx = new AudioCtx();
     if (ctx.state === "suspended") {
       ctx.resume().catch(() => {});
     }

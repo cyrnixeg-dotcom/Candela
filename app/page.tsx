@@ -44,8 +44,8 @@ export default function HomePage() {
   const heroScale = useTransform(scrollYProgress, [0, 0.35], [1, 0.92]);
   const heroY = useTransform(scrollYProgress, [0, 0.35], [0, -60]);
 
-  useEffect(() => {
-    fetch("/api/products", { cache: "no-store" })
+  const loadProducts = () => {
+    fetch(`/api/products?t=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -54,7 +54,32 @@ export default function HomePage() {
         setIsLoaded(true);
       })
       .catch(() => setIsLoaded(true));
-  }, []);
+  };
+
+  useEffect(() => {
+    loadProducts();
+    const handleRefresh = () => {
+      loadProducts();
+      fetchSettings();
+    };
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "candela-products-synced" || e.key === "candela-settings-synced") {
+        handleRefresh();
+      }
+    };
+
+    window.addEventListener("focus", handleRefresh);
+    window.addEventListener("candela:products-updated", handleRefresh);
+    window.addEventListener("candela:settings-updated", handleRefresh);
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener("focus", handleRefresh);
+      window.removeEventListener("candela:products-updated", handleRefresh);
+      window.removeEventListener("candela:settings-updated", handleRefresh);
+      window.removeEventListener("storage", handleStorage);
+    };
+  }, [fetchSettings]);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {

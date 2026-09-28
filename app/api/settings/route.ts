@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { prisma, ensureDbReady } from "@/lib/db";
+import { prisma, ensureDbReady, withDbRetry } from "@/lib/db";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 
@@ -18,45 +18,53 @@ const DEFAULT_SETTINGS: Record<string, string> = {
   delivery_note: "We will contact you within 24 hours to confirm your order and arrange delivery.",
 };
 
+const NO_CACHE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0",
+  "Pragma": "no-cache",
+  "Expires": "0",
+};
+
 export async function GET() {
   try {
-    await ensureDbReady();
-    const settings = await prisma.siteSetting.findMany();
-    const settingsMap = settings.reduce((acc, s) => {
-      acc[s.key] = s.value;
-      return acc;
-    }, { ...DEFAULT_SETTINGS });
+    const settingsMap = await withDbRetry(async () => {
+      await ensureDbReady();
+      const settings = await prisma.siteSetting.findMany();
+      return settings.reduce((acc, s) => {
+        acc[s.key] = s.value;
+        return acc;
+      }, { ...DEFAULT_SETTINGS });
+    });
+
     return NextResponse.json(settingsMap, {
-      headers: {
-        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
-      },
+      headers: NO_CACHE_HEADERS,
     });
   } catch (error) {
     console.error("Settings fetch error:", error);
     return NextResponse.json(DEFAULT_SETTINGS, {
-      headers: {
-        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
-      },
+      headers: NO_CACHE_HEADERS,
     });
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    await ensureDbReady();
     const session = await getServerSession(authOptions);
     if (!session || (session.user as any)?.role !== "ADMIN") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const body = await request.json();
-    for (const [key, value] of Object.entries(body)) {
-      await prisma.siteSetting.upsert({
-        where: { key },
-        update: { value: value as string },
-        create: { key, value: value as string },
-      });
-    }
+
+    await withDbRetry(async () => {
+      await ensureDbReady();
+      for (const [key, value] of Object.entries(body)) {
+        await prisma.siteSetting.upsert({
+          where: { key },
+          update: { value: value as string },
+          create: { key, value: value as string },
+        });
+      }
+    });
 
     try {
       revalidatePath("/");
@@ -67,11 +75,10 @@ export async function POST(request: NextRequest) {
     } catch {}
 
     return NextResponse.json({ success: true }, {
-      headers: {
-        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
-      },
+      headers: NO_CACHE_HEADERS,
     });
   } catch (error) {
+    console.error("Settings update error:", error);
     return NextResponse.json({ error: "Failed to update settings" }, { status: 500 });
   }
 }

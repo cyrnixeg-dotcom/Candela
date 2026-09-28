@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSearchParams } from "next/navigation";
 import Navigation from "@/components/store/Navigation";
@@ -44,14 +44,8 @@ function ShopContent() {
   const [sortBy, setSortBy] = useState("featured");
   const searchParams = useSearchParams();
 
-  useEffect(() => {
-    const catParam = searchParams.get("category");
-    if (catParam) setActiveCategory(catParam);
-  }, [searchParams]);
-
-  useEffect(() => {
-    setLoading(true);
-    fetch("/api/products", { cache: "no-store" })
+  const loadProducts = () => {
+    fetch(`/api/products?t=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         if (Array.isArray(data)) {
@@ -60,7 +54,52 @@ function ShopContent() {
         setLoading(false);
       })
       .catch(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    const catParam = searchParams.get("category");
+    if (catParam) setActiveCategory(catParam);
+  }, [searchParams]);
+
+  useEffect(() => {
+    setLoading(true);
+    loadProducts();
+
+    const handleFocus = () => loadProducts();
+    const handleVisibility = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        loadProducts();
+      }
+    };
+    const handleProductsUpdated = () => loadProducts();
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "candela-products-synced") loadProducts();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("candela:products-updated", handleProductsUpdated);
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("candela:products-updated", handleProductsUpdated);
+      window.removeEventListener("storage", handleStorage);
+    };
   }, []);
+
+  const availableSubcategories = useMemo(() => {
+    if (activeCategory === "all") return [];
+    const set = new Set<string>();
+    (SUBCATEGORIES[activeCategory] || []).forEach((s) => set.add(s));
+    products.forEach((p) => {
+      if (p.category === activeCategory && p.subcategory?.trim()) {
+        set.add(p.subcategory.trim());
+      }
+    });
+    return Array.from(set);
+  }, [products, activeCategory]);
 
   useEffect(() => {
     let result = [...products];
@@ -140,7 +179,7 @@ function ShopContent() {
         {/* Subcategory + filters row */}
         <div className="flex flex-wrap gap-3 justify-center mb-12">
           {activeCategory !== "all" &&
-            SUBCATEGORIES[activeCategory]?.map((sub) => (
+            availableSubcategories.map((sub) => (
               <motion.button
                 key={sub}
                 whileHover={{ scale: 1.02 }}

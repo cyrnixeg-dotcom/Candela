@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { prisma, ensureDbReady } from "@/lib/db";
+import { prisma, ensureDbReady, withDbRetry } from "@/lib/db";
 import { STATIC_PRODUCTS } from "@/lib/data";
 import { slugify } from "@/lib/utils";
 import { getServerSession } from "next-auth";
@@ -18,26 +18,28 @@ export async function GET(request: NextRequest) {
 
   try {
     await ensureDbReady();
-    const products = await prisma.product.findMany({
-      where: {
-        ...(category && category !== "all" && { category }),
-        ...(subcategory && { subcategory }),
-        ...(featured === "true" && { isFeatured: true }),
-        ...(search && {
-          OR: [
-            { name: { contains: search } },
-            { description: { contains: search } },
-            { subcategory: { contains: search } },
-          ],
-        }),
-      },
-      orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
-    });
+    const products = await withDbRetry(() =>
+      prisma.product.findMany({
+        where: {
+          ...(category && category !== "all" && { category }),
+          ...(subcategory && { subcategory }),
+          ...(featured === "true" && { isFeatured: true }),
+          ...(search && {
+            OR: [
+              { name: { contains: search, mode: "insensitive" } },
+              { description: { contains: search, mode: "insensitive" } },
+              { subcategory: { contains: search, mode: "insensitive" } },
+            ] as any,
+          }),
+        },
+        orderBy: [{ isFeatured: "desc" }, { createdAt: "desc" }],
+      })
+    );
 
     // DB query succeeded — always return the actual database state
     return NextResponse.json(products, {
       headers: {
-        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0",
       },
     });
   } catch (error) {
@@ -92,23 +94,25 @@ export async function POST(request: NextRequest) {
     // Ensure unique slug
     let uniqueSlug = baseSlug;
     let count = 1;
-    while (await prisma.product.findUnique({ where: { slug: uniqueSlug } })) {
+    while (await withDbRetry(() => prisma.product.findUnique({ where: { slug: uniqueSlug } }))) {
       uniqueSlug = `${baseSlug}-${count++}`;
     }
 
-    const product = await prisma.product.create({
-      data: {
-        name: body.name.trim(),
-        slug: uniqueSlug,
-        description: body.description?.trim() || "",
-        price: typeof body.price === "number" ? body.price : parseFloat(body.price) || 0,
-        category: body.category || "body-beauty",
-        subcategory: body.subcategory || "General",
-        image: body.image?.trim() || "/candela-logo.png",
-        inStock: body.inStock !== undefined ? Boolean(body.inStock) : true,
-        isFeatured: body.isFeatured !== undefined ? Boolean(body.isFeatured) : false,
-      },
-    });
+    const product = await withDbRetry(() =>
+      prisma.product.create({
+        data: {
+          name: body.name.trim(),
+          slug: uniqueSlug,
+          description: body.description?.trim() || "",
+          price: typeof body.price === "number" ? body.price : parseFloat(body.price) || 0,
+          category: body.category || "body-beauty",
+          subcategory: body.subcategory || "General",
+          image: body.image?.trim() || "/candela-logo.png",
+          inStock: body.inStock !== undefined ? Boolean(body.inStock) : true,
+          isFeatured: body.isFeatured !== undefined ? Boolean(body.isFeatured) : false,
+        },
+      })
+    );
 
     try {
       revalidatePath("/", "layout");
@@ -120,7 +124,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(product, {
       status: 201,
       headers: {
-        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0",
       },
     });
   } catch (error: any) {

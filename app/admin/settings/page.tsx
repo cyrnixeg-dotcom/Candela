@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
+import { useSettingsStore } from "@/store";
 
 export default function AdminSettingsPage() {
   const [settings, setSettings] = useState({
@@ -28,11 +29,11 @@ export default function AdminSettingsPage() {
   const [adminError, setAdminError] = useState("");
 
   useEffect(() => {
-    fetch("/api/settings")
+    fetch(`/api/settings?t=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => setSettings((prev) => ({ ...prev, ...data })));
 
-    fetch("/api/admin/profile")
+    fetch(`/api/admin/profile?t=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((data) => {
         if (data.email) {
@@ -56,8 +57,15 @@ export default function AdminSettingsPage() {
       });
       if (res.ok) {
         setSaved(true);
-        const refreshed = await fetch("/api/settings").then((r) => r.json());
+        const refreshed = await fetch(`/api/settings?t=${Date.now()}`, { cache: "no-store" }).then((r) => r.json());
         setSettings((prev) => ({ ...prev, ...refreshed }));
+        // Instantly update global settings store
+        useSettingsStore.getState().updateSettings(refreshed);
+        // Dispatch storage event to sync all other open tabs immediately
+        if (typeof window !== "undefined") {
+          localStorage.setItem("candela-settings-synced", Date.now().toString());
+          window.dispatchEvent(new CustomEvent("candela:settings-updated", { detail: refreshed }));
+        }
         setTimeout(() => setSaved(false), 2500);
       } else {
         alert("Failed to save settings. Please try again.");

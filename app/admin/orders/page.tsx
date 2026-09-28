@@ -244,7 +244,7 @@ export default function AdminOrdersPage() {
                   <div className="flex items-center gap-4 min-w-0">
                     <div className="min-w-0">
                       <p style={{ fontFamily: "'Jost', sans-serif", fontSize: "0.85rem", color: "rgba(255,255,255,0.85)", fontWeight: 500 }}>
-                        {order.customer.name}
+                        {order.customer?.name || "Customer"}
                       </p>
                       <p style={{ fontFamily: "'Jost', sans-serif", fontSize: "0.65rem", color: "rgba(255,255,255,0.3)" }}>
                         {order.orderNumber} · {formatDate(order.createdAt)}
@@ -301,8 +301,8 @@ export default function AdminOrdersPage() {
 
                 <div className="space-y-2">
                   <InfoRow label="Order #" value={selectedOrder.orderNumber} />
-                  <InfoRow label="Name" value={selectedOrder.customer.name} />
-                  <InfoRow label="Phone" value={selectedOrder.customer.phone} />
+                  <InfoRow label="Name" value={selectedOrder.customer?.name || "Customer"} />
+                  <InfoRow label="Phone" value={selectedOrder.customer?.phone || "—"} />
                   <InfoRow label="Address" value={`${selectedOrder.address}, ${selectedOrder.city}`} />
                   {selectedOrder.notes && <InfoRow label="Notes" value={selectedOrder.notes} />}
                   <InfoRow label="Total" value={`${selectedOrder.total} EGP`} />
@@ -314,14 +314,14 @@ export default function AdminOrdersPage() {
                     Items
                   </p>
                   <div className="space-y-3">
-                    {selectedOrder.items.map((item) => (
+                    {selectedOrder.items?.map((item) => (
                       <div key={item.id} className="flex items-center gap-3">
                         <div className="w-10 h-12 relative flex-shrink-0" style={{ background: "rgba(255,255,255,0.05)", borderRadius: "8px", overflow: "hidden" }}>
-                          <Image src={item.product.image || "/candela-logo.png"} alt={item.product.name} fill unoptimized className="object-cover" onError={(e) => { (e.target as HTMLImageElement).src = "/candela-logo.png"; }} />
+                          <Image src={item.product?.image || "/candela-logo.png"} alt={item.product?.name || "Product"} fill unoptimized className="object-cover" onError={(e) => { (e.target as HTMLImageElement).src = "/candela-logo.png"; }} />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p style={{ fontFamily: "'Jost', sans-serif", fontSize: "0.78rem", color: "rgba(255,255,255,0.7)", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {item.product.name}
+                            {item.product?.name || "Product"}
                           </p>
                           <p style={{ fontFamily: "'Jost', sans-serif", fontSize: "0.65rem", color: "rgba(255,255,255,0.3)" }}>
                             × {item.quantity} · {item.price} EGP each
@@ -334,17 +334,19 @@ export default function AdminOrdersPage() {
 
                 {/* Call & WhatsApp customer buttons */}
                 <div className="space-y-2 pt-2">
-                  <a href={`tel:${selectedOrder.customer.phone}`} className="block">
-                    <button
-                      className="w-full py-2.5 text-xs font-medium tracking-widest uppercase transition-colors cursor-pointer"
-                      style={{ background: "rgba(244,167,185,0.12)", color: "#F4A7B9", borderRadius: "12px", fontFamily: "'Jost', sans-serif", border: "1px solid rgba(244,167,185,0.2)" }}
-                    >
-                      📞 Call Customer
-                    </button>
-                  </a>
-                  {selectedOrder.customer.phone && selectedOrder.customer.phone !== "—" && (
+                  {selectedOrder.customer?.phone && selectedOrder.customer?.phone !== "—" && (
+                    <a href={`tel:${selectedOrder.customer.phone}`} className="block">
+                      <button
+                        className="w-full py-2.5 text-xs font-medium tracking-widest uppercase transition-colors cursor-pointer"
+                        style={{ background: "rgba(244,167,185,0.12)", color: "#F4A7B9", borderRadius: "12px", fontFamily: "'Jost', sans-serif", border: "1px solid rgba(244,167,185,0.2)" }}
+                      >
+                        📞 Call Customer
+                      </button>
+                    </a>
+                  )}
+                  {selectedOrder.customer?.phone && selectedOrder.customer?.phone !== "—" && (
                     <a
-                      href={`https://wa.me/${selectedOrder.customer.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hello ${selectedOrder.customer.name}, this is Candela regarding your order #${selectedOrder.orderNumber}.`)}`}
+                      href={`https://wa.me/${selectedOrder.customer.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`Hello ${selectedOrder.customer.name || "Customer"}, this is Candela regarding your order #${selectedOrder.orderNumber}.`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="block"

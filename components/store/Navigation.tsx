@@ -33,6 +33,21 @@ export default function Navigation() {
   useEffect(() => { 
     setMounted(true);
     fetchSettings();
+
+    const handleRefresh = () => fetchSettings();
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "candela-settings-synced") fetchSettings();
+    };
+
+    window.addEventListener("focus", handleRefresh);
+    window.addEventListener("candela:settings-updated", handleRefresh);
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      window.removeEventListener("focus", handleRefresh);
+      window.removeEventListener("candela:settings-updated", handleRefresh);
+      window.removeEventListener("storage", handleStorage);
+    };
   }, [fetchSettings]);
 
   useEffect(() => {

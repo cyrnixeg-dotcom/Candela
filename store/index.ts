@@ -135,20 +135,28 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   delivery_note: "We will contact you within 24 hours to confirm your order and arrange delivery.",
 };
 
-export const useSettingsStore = create<SettingsStore>((set) => ({
-  settings: DEFAULT_SITE_SETTINGS,
-  loaded: false,
-  fetchSettings: async () => {
-    try {
-      const res = await fetch("/api/settings", { cache: "no-store" });
-      if (res.ok) {
-        const data = await res.json();
-        set({ settings: { ...DEFAULT_SITE_SETTINGS, ...data }, loaded: true });
-      }
-    } catch {
-      // keep defaults
+export const useSettingsStore = create<SettingsStore>()(
+  persist(
+    (set) => ({
+      settings: DEFAULT_SITE_SETTINGS,
+      loaded: false,
+      fetchSettings: async () => {
+        try {
+          const res = await fetch(`/api/settings?t=${Date.now()}`, { cache: "no-store" });
+          if (res.ok) {
+            const data = await res.json();
+            set({ settings: { ...DEFAULT_SITE_SETTINGS, ...data }, loaded: true });
+          }
+        } catch {
+          // keep defaults or existing persisted
+        }
+      },
+      updateSettings: (newSettings) =>
+        set((state) => ({ settings: { ...state.settings, ...newSettings } })),
+    }),
+    {
+      name: "candela-site-settings",
+      partialize: (state) => ({ settings: state.settings }),
     }
-  },
-  updateSettings: (newSettings) =>
-    set((state) => ({ settings: { ...state.settings, ...newSettings } })),
-}));
+  )
+);

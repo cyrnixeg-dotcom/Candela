@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { prisma, ensureDbReady } from "@/lib/db";
+import { prisma, ensureDbReady, withDbRetry } from "@/lib/db";
 import { STATIC_PRODUCTS } from "@/lib/data";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -15,11 +15,13 @@ export async function GET(
   const { id } = await params;
   try {
     await ensureDbReady();
-    const product = await prisma.product.findFirst({
-      where: {
-        OR: [{ id }, { slug: id }],
-      },
-    });
+    const product = await withDbRetry(() =>
+      prisma.product.findFirst({
+        where: {
+          OR: [{ id }, { slug: id }],
+        },
+      })
+    );
 
     if (product) {
       // Try to increment view count, ignore error if read-only
@@ -32,7 +34,7 @@ export async function GET(
 
       return NextResponse.json(product, {
         headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0",
         },
       });
     }
@@ -70,9 +72,11 @@ export async function PUT(
 
     const body = await request.json();
 
-    const existing = await prisma.product.findFirst({
-      where: { OR: [{ id }, { slug: id }] },
-    });
+    const existing = await withDbRetry(() =>
+      prisma.product.findFirst({
+        where: { OR: [{ id }, { slug: id }] },
+      })
+    );
 
     if (!existing) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
@@ -86,9 +90,11 @@ export async function PUT(
         newSlug = candidateSlug;
         let count = 1;
         while (
-          await prisma.product.findFirst({
-            where: { slug: newSlug, NOT: { id: existing.id } },
-          })
+          await withDbRetry(() =>
+            prisma.product.findFirst({
+              where: { slug: newSlug, NOT: { id: existing.id } },
+            })
+          )
         ) {
           newSlug = `${candidateSlug}-${count++}`;
         }
@@ -99,31 +105,35 @@ export async function PUT(
         newSlug = candidateSlug;
         let count = 1;
         while (
-          await prisma.product.findFirst({
-            where: { slug: newSlug, NOT: { id: existing.id } },
-          })
+          await withDbRetry(() =>
+            prisma.product.findFirst({
+              where: { slug: newSlug, NOT: { id: existing.id } },
+            })
+          )
         ) {
           newSlug = `${candidateSlug}-${count++}`;
         }
       }
     }
 
-    const product = await prisma.product.update({
-      where: { id: existing.id },
-      data: {
-        ...(body.name !== undefined && { name: body.name.trim() }),
-        slug: newSlug,
-        ...(body.description !== undefined && { description: body.description }),
-        ...(body.price !== undefined && {
-          price: typeof body.price === "number" ? body.price : parseFloat(body.price) || 0,
-        }),
-        ...(body.category !== undefined && { category: body.category }),
-        ...(body.subcategory !== undefined && { subcategory: body.subcategory }),
-        ...(body.image !== undefined && { image: body.image?.trim() || "/candela-logo.png" }),
-        ...(body.inStock !== undefined && { inStock: Boolean(body.inStock) }),
-        ...(body.isFeatured !== undefined && { isFeatured: Boolean(body.isFeatured) }),
-      },
-    });
+    const product = await withDbRetry(() =>
+      prisma.product.update({
+        where: { id: existing.id },
+        data: {
+          ...(body.name !== undefined && { name: body.name.trim() }),
+          slug: newSlug,
+          ...(body.description !== undefined && { description: body.description }),
+          ...(body.price !== undefined && {
+            price: typeof body.price === "number" ? body.price : parseFloat(body.price) || 0,
+          }),
+          ...(body.category !== undefined && { category: body.category }),
+          ...(body.subcategory !== undefined && { subcategory: body.subcategory }),
+          ...(body.image !== undefined && { image: body.image?.trim() || "/candela-logo.png" }),
+          ...(body.inStock !== undefined && { inStock: Boolean(body.inStock) }),
+          ...(body.isFeatured !== undefined && { isFeatured: Boolean(body.isFeatured) }),
+        },
+      })
+    );
 
     try {
       revalidatePath("/", "layout");
@@ -136,7 +146,7 @@ export async function PUT(
 
     return NextResponse.json(product, {
       headers: {
-        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0",
       },
     });
   } catch (error: any) {
@@ -160,9 +170,11 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const existing = await prisma.product.findFirst({
-      where: { OR: [{ id }, { slug: id }] },
-    });
+    const existing = await withDbRetry(() =>
+      prisma.product.findFirst({
+        where: { OR: [{ id }, { slug: id }] },
+      })
+    );
 
     if (!existing) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
@@ -170,14 +182,16 @@ export async function DELETE(
 
     // Safely remove any order items referencing this product to avoid foreign key violations
     try {
-      await prisma.orderItem.deleteMany({
-        where: { productId: existing.id },
-      });
+      await withDbRetry(() =>
+        prisma.orderItem.deleteMany({
+          where: { productId: existing.id },
+        })
+      );
     } catch (itemErr) {
       console.warn("Could not delete associated order items:", itemErr);
     }
 
-    await prisma.product.delete({ where: { id: existing.id } });
+    await withDbRetry(() => prisma.product.delete({ where: { id: existing.id } }));
 
     try {
       revalidatePath("/", "layout");
@@ -190,7 +204,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, id: existing.id }, {
       headers: {
-        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0",
       },
     });
   } catch (error: any) {

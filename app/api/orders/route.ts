@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { revalidatePath } from "next/cache";
-import { prisma, ensureDbReady } from "@/lib/db";
+import { prisma, ensureDbReady, withDbRetry } from "@/lib/db";
 import { generateOrderNumber } from "@/lib/utils";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -10,7 +10,6 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 export async function GET(request: NextRequest) {
-  await ensureDbReady();
   const session = await getServerSession(authOptions);
   
   if (!session || (session.user as any).role !== "ADMIN") {
@@ -23,26 +22,29 @@ export async function GET(request: NextRequest) {
   const limit = parseInt(searchParams.get("limit") || "50");
 
   try {
-    const [orders, total, pendingCount] = await Promise.all([
-      prisma.order.findMany({
-        where: status ? { status } : {},
-        include: {
-          user: true,
-          items: {
-            include: { product: true },
+    const [orders, total, pendingCount] = await withDbRetry(async () => {
+      await ensureDbReady();
+      return Promise.all([
+        prisma.order.findMany({
+          where: status ? { status } : {},
+          include: {
+            user: true,
+            items: {
+              include: { product: true },
+            },
           },
-        },
-        orderBy: { createdAt: "desc" },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      prisma.order.count({
-        where: status ? { status } : {},
-      }),
-      prisma.order.count({
-        where: { status: "PENDING" },
-      }),
-    ]);
+          orderBy: { createdAt: "desc" },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        prisma.order.count({
+          where: status ? { status } : {},
+        }),
+        prisma.order.count({
+          where: { status: "PENDING" },
+        }),
+      ]);
+    });
 
     const normalisedOrders = orders.map((o) => ({
       ...o,
@@ -54,7 +56,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ orders: normalisedOrders, total, pendingCount, page, pages: Math.ceil(total / limit) }, {
       headers: {
-        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0",
+        "Pragma": "no-cache",
+        "Expires": "0",
       },
     });
   } catch (error) {
@@ -65,7 +69,6 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await ensureDbReady();
     const session = await getServerSession(authOptions);
     const body = await request.json();
     const { customerName, customerEmail, customerPhone, address, city, notes, items } = body;
@@ -75,161 +78,163 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
-    let dbUser = null;
+    const order = await withDbRetry(async () => {
+      await ensureDbReady();
 
-    // 1. If logged in as a regular customer (not admin), link to their account and sync name/phone
-    if (session?.user?.email && (session.user as any)?.role !== "ADMIN") {
-      dbUser = await prisma.user.findUnique({
-        where: { email: session.user.email },
-      });
-      if (dbUser) {
-        await prisma.user.update({
-          where: { id: dbUser.id },
-          data: {
-            ...(customerPhone && { phone: customerPhone }),
-            ...(customerName?.trim() && { name: customerName.trim() }),
-          },
-        }).catch(() => {});
-      }
-    }
+      let dbUser = null;
 
-    // 2. If guest or admin testing: check if customer account exists by email
-    if (!dbUser && cleanEmail && cleanEmail !== "admin@candela.store") {
-      dbUser = await prisma.user.findUnique({
-        where: { email: cleanEmail },
-      });
-      if (dbUser) {
-        await prisma.user.update({
-          where: { id: dbUser.id },
-          data: {
-            ...(customerPhone && { phone: customerPhone }),
-            ...(customerName?.trim() && { name: customerName.trim() }),
-          },
-        }).catch(() => {});
-      }
-    }
-
-    // 3. Check by phone if still not resolved
-    if (!dbUser && customerPhone) {
-      dbUser = await prisma.user.findFirst({
-        where: { phone: customerPhone, role: "USER" },
-      });
-    }
-
-    // 4. Create new customer user with role USER if not found
-    if (!dbUser) {
-      dbUser = await prisma.user.create({
-        data: {
-          name: customerName?.trim() || "Customer",
-          email: cleanEmail !== "admin@candela.store" ? cleanEmail : null,
-          phone: customerPhone || null,
-          role: "USER",
-        },
-      });
-    } else {
-      if (!dbUser.email && cleanEmail && cleanEmail !== "admin@candela.store") {
-        try {
-          dbUser = await prisma.user.update({
+      // 1. If logged in as a regular customer (not admin), link to their account and sync name/phone
+      if (session?.user?.email && (session.user as any)?.role !== "ADMIN") {
+        dbUser = await prisma.user.findUnique({
+          where: { email: session.user.email },
+        });
+        if (dbUser) {
+          await prisma.user.update({
             where: { id: dbUser.id },
-            data: { email: cleanEmail },
-          });
-        } catch {}
-      }
-      if (customerName?.trim() && dbUser.name !== customerName.trim()) {
-        await prisma.user.update({
-          where: { id: dbUser.id },
-          data: { name: customerName.trim() },
-        }).catch(() => {});
-      }
-    }
-
-    // Calculate total from DB prices (matching by either id or slug)
-    const productIds = items.map((item: { productId: string }) => item.productId);
-    const products = await prisma.product.findMany({
-      where: {
-        OR: [
-          { id: { in: productIds } },
-          { slug: { in: productIds } },
-        ],
-      },
-    });
-
-    let total = 0;
-    const orderItems: { productId: string; quantity: number; price: number }[] = [];
-
-    for (const item of items) {
-      let product: any = products.find((p) => p.id === item.productId || p.slug === item.productId);
-      if (!product) {
-        const staticP = STATIC_PRODUCTS.find((p) => p.id === item.productId || p.slug === item.productId);
-        if (staticP) {
-          try {
-            product = await prisma.product.upsert({
-              where: { slug: staticP.slug },
-              update: {},
-              create: {
-                name: staticP.name,
-                slug: staticP.slug,
-                description: staticP.description,
-                price: staticP.price,
-                category: staticP.category,
-                subcategory: staticP.subcategory,
-                image: staticP.image,
-                inStock: staticP.inStock,
-                isFeatured: staticP.isFeatured,
-              },
-            });
-          } catch {
-            product = await prisma.product.findFirst({
-              where: { OR: [{ id: staticP.id }, { slug: staticP.slug }] },
-            });
-          }
+            data: {
+              ...(customerPhone && { phone: customerPhone }),
+              ...(customerName?.trim() && { name: customerName.trim() }),
+            },
+          }).catch(() => {});
         }
       }
 
-      if (!product) {
-        return NextResponse.json(
-          { error: "One or more items in your bag are no longer available. Please review your cart." },
-          { status: 400 }
-        );
-      }
-      const qty = Math.max(1, Math.min(99, item.quantity || 1));
-      const itemTotal = product.price * qty;
-      total += itemTotal;
-      orderItems.push({
-        productId: product.id, // Always use real DB product.id for foreign key
-        quantity: qty,
-        price: product.price,
-      });
-    }
-
-    // Create order with collision-resistant loop
-    let order = null;
-    let attempts = 0;
-    while (!order && attempts < 3) {
-      attempts++;
-      try {
-        order = await prisma.order.create({
-          data: {
-            orderNumber: generateOrderNumber(),
-            userId: dbUser.id,
-            address,
-            city,
-            notes: notes || null,
-            total,
-            status: "PENDING",
-            items: {
-              create: orderItems,
+      // 2. If guest or admin testing: check if customer account exists by email
+      if (!dbUser && cleanEmail && cleanEmail !== "admin@candela.store") {
+        dbUser = await prisma.user.findUnique({
+          where: { email: cleanEmail },
+        });
+        if (dbUser) {
+          await prisma.user.update({
+            where: { id: dbUser.id },
+            data: {
+              ...(customerPhone && { phone: customerPhone }),
+              ...(customerName?.trim() && { name: customerName.trim() }),
             },
-          },
-          include: {
-            user: true,
-            items: { include: { product: true } },
+          }).catch(() => {});
+        }
+      }
+
+      // 3. Check by phone if still not resolved
+      if (!dbUser && customerPhone) {
+        dbUser = await prisma.user.findFirst({
+          where: { phone: customerPhone, role: "USER" },
+        });
+      }
+
+      // 4. Create new customer user with role USER if not found
+      if (!dbUser) {
+        dbUser = await prisma.user.create({
+          data: {
+            name: customerName?.trim() || "Customer",
+            email: cleanEmail !== "admin@candela.store" ? cleanEmail : null,
+            phone: customerPhone || null,
+            role: "USER",
           },
         });
-      } catch (createErr: any) {
-        if (attempts >= 3) throw createErr;
+      } else {
+        if (!dbUser.email && cleanEmail && cleanEmail !== "admin@candela.store") {
+          try {
+            dbUser = await prisma.user.update({
+              where: { id: dbUser.id },
+              data: { email: cleanEmail },
+            });
+          } catch {}
+        }
+        if (customerName?.trim() && dbUser.name !== customerName.trim()) {
+          await prisma.user.update({
+            where: { id: dbUser.id },
+            data: { name: customerName.trim() },
+          }).catch(() => {});
+        }
       }
-    }
+
+      // Calculate total from DB prices (matching by either id or slug)
+      const productIds = items.map((item: { productId: string }) => item.productId);
+      const products = await prisma.product.findMany({
+        where: {
+          OR: [
+            { id: { in: productIds } },
+            { slug: { in: productIds } },
+          ],
+        },
+      });
+
+      let total = 0;
+      const orderItems: { productId: string; quantity: number; price: number }[] = [];
+
+      for (const item of items) {
+        let product: any = products.find((p) => p.id === item.productId || p.slug === item.productId);
+        if (!product) {
+          const staticP = STATIC_PRODUCTS.find((p) => p.id === item.productId || p.slug === item.productId);
+          if (staticP) {
+            try {
+              product = await prisma.product.upsert({
+                where: { slug: staticP.slug },
+                update: {},
+                create: {
+                  name: staticP.name,
+                  slug: staticP.slug,
+                  description: staticP.description,
+                  price: staticP.price,
+                  category: staticP.category,
+                  subcategory: staticP.subcategory,
+                  image: staticP.image,
+                  inStock: staticP.inStock,
+                  isFeatured: staticP.isFeatured,
+                },
+              });
+            } catch {
+              product = await prisma.product.findFirst({
+                where: { OR: [{ id: staticP.id }, { slug: staticP.slug }] },
+              });
+            }
+          }
+        }
+
+        if (!product) {
+          throw new Error("ITEM_UNAVAILABLE");
+        }
+        const qty = Math.max(1, Math.min(99, item.quantity || 1));
+        const itemTotal = product.price * qty;
+        total += itemTotal;
+        orderItems.push({
+          productId: product.id,
+          quantity: qty,
+          price: product.price,
+        });
+      }
+
+      let newOrder = null;
+      let attempts = 0;
+      while (!newOrder && attempts < 3) {
+        attempts++;
+        try {
+          newOrder = await prisma.order.create({
+            data: {
+              orderNumber: generateOrderNumber(),
+              userId: dbUser.id,
+              address,
+              city,
+              notes: notes || null,
+              total,
+              status: "PENDING",
+              items: {
+                create: orderItems,
+              },
+            },
+            include: {
+              user: true,
+              items: { include: { product: true } },
+            },
+          });
+        } catch (createErr: any) {
+          if (attempts >= 3) throw createErr;
+        }
+      }
+
+      return newOrder;
+    });
 
     if (!order) {
       return NextResponse.json({ error: "Could not complete order. Please try again." }, { status: 500 });
@@ -245,10 +250,18 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(order, {
       status: 201,
       headers: {
-        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
+        "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0",
+        "Pragma": "no-cache",
+        "Expires": "0",
       },
     });
-  } catch (error) {
+  } catch (error: any) {
+    if (error?.message === "ITEM_UNAVAILABLE") {
+      return NextResponse.json(
+        { error: "One or more items in your bag are no longer available. Please review your cart." },
+        { status: 400 }
+      );
+    }
     console.error("Error creating order:", error);
     return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
   }

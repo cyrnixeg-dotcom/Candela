@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { signOut, useSession } from "next-auth/react";
-import { playNotificationSound } from "@/lib/audio";
+import { playNotificationSound, unlockAudioContext } from "@/lib/audio";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Overview", icon: "◉" },
@@ -51,23 +51,44 @@ export default function AdminSidebar() {
   const lastNotifiedOrderIdRef = useRef<string | null>(null);
   const initialOrdersDoneRef = useRef(false);
 
-  // Check alert permissions on mount
+  // Check alert permissions on mount and unlock audio on first interaction
   useEffect(() => {
-    if (typeof window !== "undefined" && "Notification" in window) {
-      setAlertsEnabled(Notification.permission === "granted");
+    if (typeof window !== "undefined") {
+      if ("Notification" in window) {
+        setAlertsEnabled(Notification.permission === "granted");
+      }
+
+      const unlock = () => {
+        unlockAudioContext();
+        window.removeEventListener("click", unlock);
+        window.removeEventListener("touchstart", unlock);
+      };
+      window.addEventListener("click", unlock, { passive: true });
+      window.addEventListener("touchstart", unlock, { passive: true });
+
+      const handleSettingsUpdated = (e: any) => {
+        if (e.detail?.store_name) setStoreName(e.detail.store_name);
+      };
+      window.addEventListener("candela:settings-updated", handleSettingsUpdated);
+
+      return () => {
+        window.removeEventListener("click", unlock);
+        window.removeEventListener("touchstart", unlock);
+        window.removeEventListener("candela:settings-updated", handleSettingsUpdated);
+      };
     }
   }, []);
 
   // 1. Fetch Profile & Settings
   useEffect(() => {
-    fetch("/api/admin/profile", { cache: "no-store" })
+    fetch(`/api/admin/profile?t=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
         if (d.email) setProfile(d);
       })
       .catch(() => {});
 
-    fetch("/api/settings", { cache: "no-store" })
+    fetch(`/api/settings?t=${Date.now()}`, { cache: "no-store" })
       .then((r) => r.json())
       .then((d) => {
         if (d.store_name) setStoreName(d.store_name);
